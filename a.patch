@@ -1,0 +1,61 @@
+--- a/main.go
++++ b/main.go
+@@ func handleAddSession(c *gin.Context) {
+-   client := whatsmeow.NewClient(deviceStore, waLog.Noop)
+-   sessionID := uuid.NewString()
+-
+-   client.AddEventHandler(func(evt interface{}) {
+-       switch v := evt.(type) {
+-       case *whatsmeow.events.LoggedIn:
+-           sessionsLock.Lock()
+-           sessions[sessionID].IsLoggedIn = true
+-           sessionsLock.Unlock()
+-       }
+-   })
++   client := whatsmeow.NewClient(deviceStore, waLog.Noop)
++   sessionID := uuid.NewString()
++
++   // Store the session object *before* attaching the handler
++   sessionsLock.Lock()
++   sessions[sessionID] = &Session{
++       Client:     client,
++       Container:  container,
++       SessionID:  sessionID,
++       Phone:      req.PhoneNumber,
++       User:       req.User,
++       IsLoggedIn: false,
++   }
++   sessionsLock.Unlock()
++
++   // Use the imported events package, not whatsmeow.events
++   client.AddEventHandler(func(evt interface{}) {
++       switch evt := evt.(type) {
++       case *events.LoggedIn:
++           sessionsLock.Lock()
++           sessions[sessionID].IsLoggedIn = true
++           sessionsLock.Unlock()
++       }
++   })
+ 
+-   if client.Store.ID != nil {
++   if client.Store.ID != nil {
+        _ = client.Connect()
+        c.JSON(http.StatusOK, gin.H{"msg": "Session already exists", "sessionId": sessionID})
+    } else {
+-       sessionsLock.Lock()
+-       sessions[sessionID] = &Session{
+-           Client:     client,
+-           Container:  container,
+-           SessionID:  sessionID,
+-           Phone:      req.PhoneNumber,
+-           User:       req.User,
+-           IsLoggedIn: false,
+-       }
+-       sessionsLock.Unlock()
+-
+-       _ = client.Connect()
+-       c.JSON(http.StatusOK, gin.H{"msg": "Scan QR code using /wa/qr-image", "sessionId": sessionID})
++       _ = client.Connect()
++       c.JSON(http.StatusOK, gin.H{"msg": "Scan QR code using /wa/qr-image", "sessionId": sessionID})
+    }
+ }

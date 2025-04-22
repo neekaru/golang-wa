@@ -1,0 +1,145 @@
+# WhatsApp API Documentation
+
+This document provides documentation for all available API endpoints and their corresponding curl commands for testing.
+
+## Session Management
+
+### 1. Create New Session
+Creates a new WhatsApp session for a user.
+
+```bash
+curl -X POST http://localhost:8080/wa/add \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user": "test_user"
+  }'
+```
+
+### 2. Get QR Code
+Get QR code for WhatsApp Web authentication.
+
+```bash
+curl -X GET "http://localhost:8080/wa/qr-image?user=test_user"
+```
+
+### 3. Check Session Status
+Check if a session is connected and authenticated.
+
+```bash
+curl -X POST "http://localhost:8080/wa/status?user=test_user"
+```
+
+### 4. Restart Session
+Restart an existing session.
+
+```bash
+curl -X POST "http://localhost:8080/wa/restart?user=test_user"
+```
+
+### 5. Logout Session
+Logout and remove a session.
+
+```bash
+curl -X POST http://localhost:8080/wa/logout \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user": "test_user"
+  }'
+```
+
+## Messaging
+
+### 1. Send Text Message
+Send a text message to a WhatsApp number.
+
+```bash
+curl -X POST http://localhost:8080/send \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user": "test_user",
+    "to": "1234567890",
+    "message": "Hello, World!"
+  }'
+```
+
+### 2. Send Image
+Send an image with optional caption. The image should be base64 encoded.
+
+```bash
+curl -X POST http://localhost:8080/send/image \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user": "test_user",
+    "to": "1234567890",
+    "media": "BASE64_ENCODED_IMAGE_DATA",
+    "caption": "Check out this image!"
+  }'
+```
+
+### 3. Send Video
+Send a video with optional caption. The video should be base64 encoded.
+
+```bash
+curl -X POST http://localhost:8080/send/video \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user": "test_user",
+    "to": "1234567890",
+    "media": "BASE64_ENCODED_VIDEO_DATA",
+    "caption": "Check out this video!"
+  }'
+```
+
+### 4. Send File
+Send any type of file with optional caption. The file should be base64 encoded.
+
+```bash
+curl -X POST http://localhost:8080/send/file \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user": "test_user",
+    "to": "1234567890",
+    "media": "BASE64_ENCODED_FILE_DATA",
+    "caption": "Here's the document!"
+  }'
+```
+
+### 5. Mark Messages as Read
+Mark one or more messages as read.
+
+```bash
+curl -X POST http://localhost:8080/msg/read \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user": "test_user",
+    "message_ids": ["MESSAGE_ID_1", "MESSAGE_ID_2"],
+    "from_jid": "SENDER_PHONE_NUMBER",
+    "to_jid": "RECIPIENT_PHONE_NUMBER"
+  }'
+```
+
+## Response Format
+
+All endpoints return JSON responses in the following format:
+
+### Success Response
+```json
+{
+    "msg": "Success message"
+}
+```
+
+### Error Response
+```json
+{
+    "error": "Error message"
+}
+```
+
+## Important Notes
+
+1. Replace `test_user` with your actual user identifier
+2. Phone numbers should be in international format without any special characters (e.g., "1234567890")
+3. For media uploads, ensure the base64 data is properly encoded
+4. Session must be created and authenticated before sending messages
+5. All endpoints run on `localhost:8080` by default
