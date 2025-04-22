@@ -182,36 +182,12 @@ func handleSendMessage(c *gin.Context) {
 		Server: "s.whatsapp.net",
 	}
 
-	// Try to get contact info directly from store first
-	_, err := sess.Client.Store.Contacts.GetContact(recipient)
-	if err == nil {
-		// Contact exists in store, proceed with sending
-		msg := &waProto.Message{
-			Conversation: proto.String(req.Message),
-		}
-
-		// Send with unique message ID
-		opts := whatsmeow.SendRequestExtra{
-			ID: types.MessageID(fmt.Sprintf("%d", time.Now().UnixNano())),
-		}
-
-		_, err = sess.Client.SendMessage(context.Background(), recipient, msg, opts)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send message: " + err.Error()})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{"msg": "Message sent successfully"})
-		return
-	}
-
-	// If not in store, check if number exists on WhatsApp
+	// Check if number exists on WhatsApp
 	resp, err := sess.Client.IsOnWhatsApp([]string{req.PhoneNumber})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check number: " + err.Error()})
 		return
 	}
-
 	if len(resp) == 0 || !resp[0].IsIn {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "The phone number is not registered on WhatsApp"})
 		return
@@ -271,12 +247,12 @@ func handleMarkRead(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"msg": "Messages marked as read"})
 }
 
-func sendMediaHandler(c *gin.Context, _ string) {
+func sendMediaHandler(c *gin.Context, mediaType string) {
 	var req struct {
-		User    string `json:"user"`
-		To      string `json:"to"`
-		Media   string `json:"media"`
-		Caption string `json:"caption"`
+		User        string `json:"user"`
+		PhoneNumber string `json:"phone_number"`
+		Media       string `json:"media"`
+		Caption     string `json:"caption"`
 	}
 	if err := c.BindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
@@ -289,8 +265,28 @@ func sendMediaHandler(c *gin.Context, _ string) {
 		return
 	}
 
+	// Ensure client is connected before sending
+	if !sess.Client.IsConnected() {
+		err := sess.Client.Connect()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to connect: " + err.Error()})
+			return
+		}
+	}
+
+	// Check if number exists on WhatsApp
+	resp, err := sess.Client.IsOnWhatsApp([]string{req.PhoneNumber})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check number: " + err.Error()})
+		return
+	}
+	if len(resp) == 0 || !resp[0].IsIn {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "The phone number is not registered on WhatsApp"})
+		return
+	}
+
 	recipient := types.JID{
-		User:   req.To,
+		User:   req.PhoneNumber,
 		Server: "s.whatsapp.net",
 	}
 
@@ -301,35 +297,76 @@ func sendMediaHandler(c *gin.Context, _ string) {
 		return
 	}
 
-	uploaded, err := sess.Client.Upload(context.Background(), media, whatsmeow.MediaImage)
+	var waMediaType whatsmeow.MediaType
+	switch mediaType {
+	case "image":
+		waMediaType = whatsmeow.MediaImage
+	case "video":
+		waMediaType = whatsmeow.MediaVideo
+	case "file":
+		waMediaType = whatsmeow.MediaDocument
+	}
+
+	uploaded, err := sess.Client.Upload(context.Background(), media, waMediaType)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to upload media"})
 		return
 	}
 
-	msg := &waProto.Message{
-		ImageMessage: &waProto.ImageMessage{
-			Caption:       proto.String(req.Caption),
-			URL:           proto.String(uploaded.URL),
-			DirectPath:    proto.String(uploaded.DirectPath),
-			MediaKey:      uploaded.MediaKey,
-			Mimetype:      proto.String(http.DetectContentType(media)),
-			FileEncSHA256: uploaded.FileEncSHA256,
-			FileSHA256:    uploaded.FileSHA256,
-			FileLength:    proto.Uint64(uint64(len(media))),
-		},
+	var msg waProto.Message
+	switch mediaType {
+	case "image":
+		msg = waProto.Message{
+			ImageMessage: &waProto.ImageMessage{
+				Caption:       proto.String(req.Caption),
+				URL:           proto.String(uploaded.URL),
+				DirectPath:    proto.String(uploaded.DirectPath),
+				MediaKey:      uploaded.MediaKey,
+				Mimetype:      proto.String(http.DetectContentType(media)),
+				FileEncSHA256: uploaded.FileEncSHA256,
+				FileSHA256:    uploaded.FileSHA256,
+				FileLength:    proto.Uint64(uint64(len(media))),
+			},
+		}
+	case "video":
+		msg = waProto.Message{
+			VideoMessage: &waProto.VideoMessage{
+				Caption:       proto.String(req.Caption),
+				URL:           proto.String(uploaded.URL),
+				DirectPath:    proto.String(uploaded.DirectPath),
+				MediaKey:      uploaded.MediaKey,
+				Mimetype:      proto.String(http.DetectContentType(media)),
+				FileEncSHA256: uploaded.FileEncSHA256,
+				FileSHA256:    uploaded.FileSHA256,
+				FileLength:    proto.Uint64(uint64(len(media))),
+			},
+		}
+	case "file":
+		msg = waProto.Message{
+			DocumentMessage: &waProto.DocumentMessage{
+				Caption:       proto.String(req.Caption),
+				URL:           proto.String(uploaded.URL),
+				DirectPath:    proto.String(uploaded.DirectPath),
+				MediaKey:      uploaded.MediaKey,
+				Mimetype:      proto.String(http.DetectContentType(media)),
+				FileEncSHA256: uploaded.FileEncSHA256,
+				FileSHA256:    uploaded.FileSHA256,
+				FileLength:    proto.Uint64(uint64(len(media))),
+			},
+		}
 	}
 
-	// Pass SendRequestExtra directly, not as a pointer
-	opts := whatsmeow.SendRequestExtra{}
+	opts := whatsmeow.SendRequestExtra{
+		ID: types.MessageID(fmt.Sprintf("%d", time.Now().UnixNano())),
+	}
 
-	_, err = sess.Client.SendMessage(context.Background(), recipient, msg, opts)
+	_, err = sess.Client.SendMessage(context.Background(), recipient, &msg, opts)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send media message"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send media message: " + err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"msg": "Media sent successfully"})
+	c.JSON(http.StatusOK, gin.H{"msg": mediaType + " sent successfully"})
 }
 
 func handleRestart(c *gin.Context) {
