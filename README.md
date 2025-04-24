@@ -14,16 +14,43 @@ A WhatsApp API built with Go using the [whatsmeow](https://github.com/tulir/what
 
 This project includes a Docker setup with Caddy as a reverse proxy for improved security and performance.
 
-### Quick Start
+### Quick Start with Docker Hub Image
 
+1. Create your environment file:
 ```bash
-# Start the containers
+# Copy the example environment file
+cp .env.example .env
+
+# Edit the .env file with your settings
+nano .env
+```
+
+2. Start the containers:
+```bash
 docker-compose up -d
 
 # Access the API
 curl http://localhost/
 # Should return: {"msg":"it works"}
 ```
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| DOCKER_USERNAME | Your Docker Hub username | yourusername |
+| TAG | Docker image tag to use | latest |
+| API_PORT | Port for the WhatsApp API | 8080 |
+| HTTP_PORT | HTTP port for Caddy | 80 |
+| HTTPS_PORT | HTTPS port for Caddy | 443 |
+| DATA_DIR | Directory for WhatsApp data | ./whatsmeow-data |
+| TZ | Container timezone | Asia/Jakarta |
+
+### Health Checks
+
+The setup includes health checks for both services:
+- WhatsApp API: Checks the API endpoint every 30 seconds
+- Caddy: Verifies Caddy is running every 30 seconds
 
 ## GitHub Actions Deployment
 
@@ -55,6 +82,9 @@ git push origin v1.0.0
 # yourusername/whatsmeow-maiga:1.0
 # yourusername/whatsmeow-maiga:1
 # yourusername/whatsmeow-maiga:latest
+
+# To use a specific version in docker-compose:
+TAG=1.0.0 docker-compose up -d
 ```
 
 ## API Documentation
