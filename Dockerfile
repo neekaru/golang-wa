@@ -1,4 +1,4 @@
-FROM golang:1.20-alpine AS builder
+FROM golang:1.24.2-alpine AS builder
 
 WORKDIR /app
 COPY . .
@@ -8,9 +8,9 @@ RUN go mod download
 # Disable CGO but remove static build flags
 RUN CGO_ENABLED=0 GOOS=linux go build -o bot .
 
-FROM alpine:3.19
+FROM alpine:3.21.3
 
-RUN apk add --no-cache ca-certificates supervisor
+RUN apk add --no-cache ca-certificates supervisor sqlite
 
 WORKDIR /app
 
