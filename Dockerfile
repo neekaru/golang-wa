@@ -3,6 +3,9 @@ FROM golang:1.24.2-alpine AS builder
 WORKDIR /app
 COPY . .
 
+# Install C compiler and build dependencies
+RUN apk add --no-cache gcc musl-dev sqlite-dev
+
 RUN go mod download
 
 # Disable CGO but remove static build flags
