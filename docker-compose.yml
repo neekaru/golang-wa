@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  whatsmeow-bot:
+    build: .
+    container_name: whatsmeow-gin-bot
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - ./whatsmeow-data:/app/data
+    restart: always
