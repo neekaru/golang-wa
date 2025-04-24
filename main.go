@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/skip2/go-qrcode"
 	"go.mau.fi/whatsmeow"
@@ -202,6 +203,16 @@ func main() {
 	}
 
 	r := gin.Default()
+
+	// Configure CORS
+	corsConfig := cors.DefaultConfig()
+	corsConfig.AllowAllOrigins = true
+	corsConfig.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
+	corsConfig.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Requested-With"}
+	corsConfig.ExposeHeaders = []string{"Content-Length", "Content-Type"}
+	corsConfig.AllowCredentials = true
+	corsConfig.MaxAge = 12 * time.Hour
+	r.Use(cors.New(corsConfig))
 
 	// Set up gin to log to the same log file
 	gin.DefaultWriter = io.MultiWriter(os.Stdout, appLogger.Writer())
