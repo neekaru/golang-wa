@@ -5,9 +5,11 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"sync"
 	"syscall"
 	"time"
@@ -41,24 +43,63 @@ var (
 	sessions     = make(map[string]*Session)
 	sessionsLock = sync.RWMutex{}
 	startTime    = time.Now() // Track startup time for health checks
+	appLogger    *log.Logger  // Application logger
 )
+
+// setupLogging configures the application logging
+func setupLogging() (*log.Logger, error) {
+	// Ensure logs directory exists
+	logDir := "logs"
+	if err := os.MkdirAll(logDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create logs directory: %v", err)
+	}
+
+	// Create log file with timestamp in filename
+	logFilePath := filepath.Join(logDir, fmt.Sprintf("whatsapp-api-%s.log", time.Now().Format("2006-01-02")))
+	logFile, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open log file: %v", err)
+	}
+
+	// Create multi-writer to log to both file and console
+	multiWriter := io.MultiWriter(os.Stdout, logFile)
+	logger := log.New(multiWriter, "", log.LstdFlags|log.Lshortfile)
+	logger.Printf("Logging initialized to %s", logFilePath)
+
+	return logger, nil
+}
 
 func restoreSession(user string) (*Session, error) {
 	dbPath := "data/" + user + ".db"
-	dbLog := waLog.Stdout("Database", "INFO", true)
-	container, err := sqlstore.New("sqlite3", "file:"+dbPath+"?_foreign_keys=on", dbLog)
+	
+	// Create a logger specifically for this database connection
+	dbLogger := waLog.Stdout("Database-"+user, "INFO", true)
+	if appLogger != nil {
+		appLogger.Printf("Creating/restoring session for user: %s at %s", user, dbPath)
+	}
+	
+	container, err := sqlstore.New("sqlite3", "file:"+dbPath+"?_foreign_keys=on", dbLogger)
 	if err != nil {
+		if appLogger != nil {
+			appLogger.Printf("Database error for user %s: %v", user, err)
+		}
 		return nil, fmt.Errorf("database error: %v", err)
 	}
 
 	deviceStore, err := container.GetFirstDevice()
 	if err != nil {
+		if appLogger != nil {
+			appLogger.Printf("Device error for user %s: %v", user, err)
+		}
 		return nil, fmt.Errorf("device error: %v", err)
 	}
 
 	store.SetOSInfo("Linux", store.GetWAVersion())
 	store.DeviceProps.PlatformType = waCompanionReg.DeviceProps_CHROME.Enum()
-	client := whatsmeow.NewClient(deviceStore, waLog.Noop)
+	
+	// Configure client with proper logging
+	clientLogger := waLog.Stdout("WhatsApp-"+user, "INFO", true)
+	client := whatsmeow.NewClient(deviceStore, clientLogger)
 
 	session := &Session{
 		Client:     client,
@@ -72,6 +113,11 @@ func restoreSession(user string) (*Session, error) {
 		err = client.Connect()
 		if err == nil {
 			session.IsLoggedIn = true
+			if appLogger != nil {
+				appLogger.Printf("Successfully connected existing session for user: %s", user)
+			}
+		} else if appLogger != nil {
+			appLogger.Printf("Failed to connect existing session for user %s: %v", user, err)
 		}
 	}
 
@@ -92,6 +138,9 @@ func findSessionByUser(user string) (*Session, bool) {
 	// If not found in memory, try to restore from database
 	sess, err := restoreSession(user)
 	if err != nil {
+		if appLogger != nil {
+			appLogger.Printf("Failed to restore session for user %s: %v", user, err)
+		}
 		return nil, false
 	}
 
@@ -104,32 +153,59 @@ func findSessionByUser(user string) (*Session, bool) {
 }
 
 func main() {
+	var err error
+	
+	// Set up logging
+	appLogger, err = setupLogging()
+	if err != nil {
+		fmt.Printf("Failed to set up logging: %v\n", err)
+		// Continue with console logging only
+		appLogger = log.New(os.Stdout, "", log.LstdFlags|log.Lshortfile)
+	}
+	
+	appLogger.Println("Starting WhatsApp API service")
+	
 	// Set Gin to release mode in production
-	gin.SetMode(gin.ReleaseMode)
+	// gin.SetMode(gin.ReleaseMode)
 
 	// Ensure data directory exists
-	os.MkdirAll("data", 0755)
+	if err := os.MkdirAll("data", 0755); err != nil {
+		appLogger.Fatalf("Failed to create data directory: %v", err)
+	}
+	appLogger.Println("Ensured data directory exists")
 
 	// Database directory check
 	files, err := os.ReadDir("data")
 	if err == nil {
 		// Restore all existing sessions
+		appLogger.Println("Checking for existing sessions in data directory")
+		sessionCount := 0
 		for _, file := range files {
 			if !file.IsDir() && len(file.Name()) > 3 && file.Name()[len(file.Name())-3:] == ".db" {
 				user := file.Name()[:len(file.Name())-3] // Remove .db extension
+				appLogger.Printf("Found database for user: %s", user)
+				
 				if sess, err := restoreSession(user); err == nil {
 					sessionsLock.Lock()
 					sessions[user] = sess
 					sessionsLock.Unlock()
-					fmt.Printf("Restored session for user: %s\n", user)
+					sessionCount++
+					appLogger.Printf("Restored session for user: %s", user)
+				} else {
+					appLogger.Printf("Failed to restore session for user %s: %v", user, err)
 				}
 			}
 		}
+		appLogger.Printf("Restored %d sessions", sessionCount)
+	} else {
+		appLogger.Printf("Failed to read data directory: %v", err)
 	}
 
-	r := gin.New()
-	r.Use(gin.Recovery())
-	r.Use(gin.Logger())
+	r := gin.Default()
+
+	// Set up gin to log to the same log file
+	gin.DefaultWriter = io.MultiWriter(os.Stdout, appLogger.Writer())
+	gin.DefaultErrorWriter = io.MultiWriter(os.Stderr, appLogger.Writer())
 
 	// Enhanced health check endpoint for Docker
 	r.GET("/", func(c *gin.Context) {
@@ -184,9 +260,9 @@ func main() {
 	// Only use port 8080, Caddy will handle port 80
 	srv := &http.Server{Addr: ":8080", Handler: r}
 	go func() {
-		fmt.Println("🚀 WhatsApp bot running on :8080")
+		appLogger.Println("🚀 WhatsApp bot running on :8080")
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			fmt.Printf("Server error: %v\n", err)
+			appLogger.Printf("Server error: %v\n", err)
 		}
 	}()
 
@@ -194,16 +270,16 @@ func main() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	fmt.Println("🚫 Shutting down server...")
+	appLogger.Println("🚫 Shutting down server...")
 	
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	
 	if err := srv.Shutdown(ctx); err != nil {
-		fmt.Printf("Server forced to shutdown: %v\n", err)
+		appLogger.Printf("Server forced to shutdown: %v\n", err)
 	}
 	
-	fmt.Println("Server exited")
+	appLogger.Println("Server exited")
 }
 
 func handleSendMessage(c *gin.Context) {

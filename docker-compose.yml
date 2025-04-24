@@ -5,6 +5,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./data:/app/data
+      - ./logs:/app/logs
     networks:
       - whatsapp-network
     healthcheck:

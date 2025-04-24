@@ -29,6 +29,13 @@ print_usage() {
     echo -e "  ${GREEN}logs api${NC}   - Show logs for the WhatsApp API container"
     echo -e "  ${GREEN}format-caddy${NC} - Format the Caddyfile and restart Caddy"
     echo -e "  ${GREEN}status${NC}     - Check the status of all containers"
+    echo -e "  ${GREEN}health${NC}     - Get basic health status of API"
+    echo -e "  ${GREEN}health-detailed${NC} - Get detailed health status of API"
+    echo -e "  ${GREEN}wa-status <user>${NC} - Check WhatsApp connection status for a user"
+    echo -e "  ${GREEN}wa-restart <user>${NC} - Restart a WhatsApp session"
+    echo -e "  ${GREEN}init-dirs${NC}  - Create data and logs directories"
+    echo -e "  ${GREEN}app-logs${NC}   - View the WhatsApp application logs"
+    echo -e "  ${GREEN}app-logs <user>${NC} - Filter logs for a specific user"
     echo ""
 }
 
@@ -40,8 +47,37 @@ check_docker() {
     fi
 }
 
+# Initialize data and logs directories
+initialize_directories() {
+    echo -e "${BLUE}Creating necessary directories...${NC}"
+    
+    # Create data directory if it doesn't exist
+    if [ ! -d "data" ]; then
+        mkdir -p data
+        echo -e "${GREEN}Created data directory${NC}"
+    else
+        echo -e "${GREEN}Data directory already exists${NC}"
+    fi
+    
+    # Create logs directory if it doesn't exist
+    if [ ! -d "logs" ]; then
+        mkdir -p logs
+        echo -e "${GREEN}Created logs directory${NC}"
+    else
+        echo -e "${GREEN}Logs directory already exists${NC}"
+    fi
+    
+    # Ensure proper permissions
+    chmod -R 755 data logs
+    
+    echo -e "${GREEN}Directories initialized successfully${NC}"
+}
+
 # Start containers
 start_containers() {
+    # Ensure required directories exist before starting
+    initialize_directories
+    
     echo -e "${BLUE}Starting containers...${NC}"
     docker compose up -d
     if [ $? -eq 0 ]; then
@@ -75,6 +111,9 @@ restart_containers() {
 
 # Rebuild containers
 rebuild_containers() {
+    # Ensure required directories exist before rebuilding
+    initialize_directories
+    
     echo -e "${BLUE}Rebuilding and starting containers...${NC}"
     docker compose down
     docker compose build --no-cache
@@ -132,6 +171,143 @@ show_status() {
     docker compose ps
 }
 
+# Check basic health status
+check_health() {
+    echo -e "${BLUE}Checking API health status...${NC}"
+    response=$(curl -s http://localhost:8080/)
+    
+    if [ $? -eq 0 ]; then
+        status=$(echo $response | jq -r '.status')
+        uptime=$(echo $response | jq -r '.uptime')
+        session_count=$(echo $response | jq -r '.session_count')
+        version=$(echo $response | jq -r '.version')
+        
+        echo ""
+        echo -e "Status: ${GREEN}$status${NC}"
+        echo -e "Uptime: ${GREEN}$uptime${NC}"
+        echo -e "Session Count: ${GREEN}$session_count${NC}"
+        echo -e "Version: ${GREEN}$version${NC}"
+    else
+        echo -e "${RED}Failed to get health status${NC}"
+    fi
+}
+
+# Check detailed health status
+check_health_detailed() {
+    echo -e "${BLUE}Checking detailed API health status...${NC}"
+    response=$(curl -s http://localhost:8080/health)
+    
+    if [ $? -eq 0 ]; then
+        status=$(echo $response | jq -r '.status')
+        uptime=$(echo $response | jq -r '.uptime')
+        total_sessions=$(echo $response | jq -r '.total_sessions')
+        active_sessions=$(echo $response | jq -r '.active_sessions')
+        timestamp=$(echo $response | jq -r '.timestamp')
+        
+        echo ""
+        echo -e "Status: ${GREEN}$status${NC}"
+        echo -e "Uptime: ${GREEN}$uptime${NC}"
+        echo -e "Total Sessions: ${GREEN}$total_sessions${NC}"
+        echo -e "Active Sessions: ${GREEN}$active_sessions${NC}"
+        echo -e "Timestamp: ${GREEN}$timestamp${NC}"
+    else
+        echo -e "${RED}Failed to get detailed health status${NC}"
+    fi
+}
+
+# Check WhatsApp session status
+check_wa_status() {
+    local user=$1
+    
+    if [ -z "$user" ]; then
+        echo -e "${RED}Error: User parameter is required${NC}"
+        return 1
+    fi
+    
+    echo -e "${BLUE}Checking WhatsApp status for user $user...${NC}"
+    response=$(curl -s "http://localhost:8080/wa/status?user=$user")
+    
+    if [ $? -eq 0 ]; then
+        user=$(echo $response | jq -r '.user')
+        logged_in=$(echo $response | jq -r '.logged_in')
+        connected=$(echo $response | jq -r '.connected')
+        
+        echo ""
+        echo -e "User: ${GREEN}$user${NC}"
+        
+        if [ "$logged_in" = "true" ]; then
+            echo -e "Logged In: ${GREEN}Yes${NC}"
+        else
+            echo -e "Logged In: ${YELLOW}No${NC}"
+        fi
+        
+        if [ "$connected" = "true" ]; then
+            echo -e "Connected: ${GREEN}Yes${NC}"
+        else
+            echo -e "Connected: ${YELLOW}No${NC}"
+        fi
+    else
+        echo -e "${RED}Failed to get WhatsApp status${NC}"
+    fi
+}
+
+# Restart WhatsApp session
+restart_wa_session() {
+    local user=$1
+    
+    if [ -z "$user" ]; then
+        echo -e "${RED}Error: User parameter is required${NC}"
+        return 1
+    fi
+    
+    echo -e "${BLUE}Restarting WhatsApp session for user $user...${NC}"
+    response=$(curl -s -X POST "http://localhost:8080/wa/restart?user=$user")
+    
+    if [ $? -eq 0 ]; then
+        msg=$(echo $response | jq -r '.msg')
+        echo -e "Session restart result: ${GREEN}$msg${NC}"
+    else
+        echo -e "${RED}Failed to restart WhatsApp session${NC}"
+    fi
+}
+
+# View WhatsApp application logs
+view_app_logs() {
+    local user=$1
+    
+    echo -e "${BLUE}Checking WhatsApp application logs...${NC}"
+    
+    # Check if logs directory exists
+    if [ ! -d "logs" ]; then
+        echo -e "${YELLOW}Logs directory not found. Creating it now...${NC}"
+        mkdir -p logs
+        echo -e "${YELLOW}No log files found yet. Start the application first.${NC}"
+        return
+    fi
+    
+    # Get log files
+    log_files=$(find logs -name "whatsapp-api-*.log" | sort -r)
+    
+    if [ -z "$log_files" ]; then
+        echo -e "${YELLOW}No log files found in the logs directory${NC}"
+        return
+    fi
+    
+    # Get the most recent log file
+    latest_log=$(echo "$log_files" | head -n 1)
+    
+    echo -e "Viewing latest log file: ${GREEN}$(basename $latest_log)${NC}"
+    
+    if [ -z "$user" ]; then
+        # Show the entire log file
+        tail -n 100 -f "$latest_log"
+    else
+        # Filter for a specific user
+        echo -e "Filtering logs for user: ${BLUE}$user${NC}"
+        tail -f "$latest_log" | grep "$user"
+    fi
+}
+
 # Main function
 main() {
     print_header
@@ -163,6 +339,24 @@ main() {
             ;;
         status)
             show_status
+            ;;
+        health)
+            check_health
+            ;;
+        health-detailed)
+            check_health_detailed
+            ;;
+        wa-status)
+            check_wa_status "$2"
+            ;;
+        wa-restart)
+            restart_wa_session "$2"
+            ;;
+        init-dirs)
+            initialize_directories
+            ;;
+        app-logs)
+            view_app_logs "$2"
             ;;
         *)
             echo -e "${RED}Unknown command: $1${NC}"
