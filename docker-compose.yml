@@ -5,8 +5,33 @@ services:
     build: .
     container_name: whatsmeow-gin-bot
     ports:
-      - "80:80"
       - "8080:8080"
     volumes:
       - ./whatsmeow-data:/app/data
     restart: always
+    networks:
+      - app-network
+
+  caddy:
+    image: caddy:2
+    container_name: caddy-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - whatsmeow-bot
+    restart: always
+    networks:
+      - app-network
+
+volumes:
+  caddy_data:
+  caddy_config:
+
+networks:
+  app-network:
+    driver: bridge

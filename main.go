@@ -142,23 +142,14 @@ func main() {
 
 	r.POST("/msg/read", handleMarkRead)
 
-	// Start server on port 8080
+	// Only use port 8080, Caddy will handle port 80
 	srv := &http.Server{Addr: ":8080", Handler: r}
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			fmt.Println("Server error on port 8080:", err)
+			fmt.Println("Server error:", err)
 		}
 	}()
 	fmt.Println("🚀 WhatsApp bot running on :8080")
-
-	// Start server on default port 80 (for localhost without port)
-	defaultSrv := &http.Server{Addr: ":80", Handler: r}
-	go func() {
-		if err := defaultSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			fmt.Println("Server error on port 80:", err)
-		}
-	}()
-	fmt.Println("🚀 WhatsApp bot also available on default HTTP port (localhost)")
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
@@ -169,7 +160,6 @@ func main() {
 	defer cancel()
 	
 	_ = srv.Shutdown(ctx)
-	_ = defaultSrv.Shutdown(ctx)
 }
 
 func handleSendMessage(c *gin.Context) {
