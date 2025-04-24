@@ -8,12 +8,6 @@ services:
       - ./logs:/app/logs
     networks:
       - whatsapp-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
 
@@ -34,8 +28,7 @@ services:
     networks:
       - whatsapp-network
     depends_on:
-      whatsapp-api:
-        condition: service_healthy
+      - whatsapp-api
     healthcheck:
       test: ["CMD", "caddy", "version"]
       interval: 10s
