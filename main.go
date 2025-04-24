@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"mime"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -542,6 +544,7 @@ func sendMediaHandler(c *gin.Context, mediaType string) {
 		Media       string `json:"media"`
 		URL         string `json:"url"`
 		Caption     string `json:"caption"`
+		FileName    string `json:"file_name"` // Optional filename parameter
 	}
 	if err := c.BindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
@@ -581,6 +584,12 @@ func sendMediaHandler(c *gin.Context, mediaType string) {
 
 	var media []byte
 	var mimeType string
+	var fileName string
+
+	// Set filename if provided
+	if req.FileName != "" {
+		fileName = req.FileName
+	}
 
 	// Check if URL or base64 media is provided
 	if req.URL != "" {
@@ -606,6 +615,39 @@ func sendMediaHandler(c *gin.Context, mediaType string) {
 		mimeType = httpResp.Header.Get("Content-Type")
 		if mimeType == "" {
 			mimeType = http.DetectContentType(media)
+		}
+
+		// Extract filename from URL if not provided
+		if fileName == "" {
+			// Parse URL to extract filename
+			parsedURL, err := url.Parse(req.URL)
+			if err == nil {
+				// Get the last part of the path
+				parts := strings.Split(parsedURL.Path, "/")
+				if len(parts) > 0 {
+					urlFileName := parts[len(parts)-1]
+					// Remove query parameters if present
+					urlFileName = strings.Split(urlFileName, "?")[0]
+					// Use it if it looks like a valid filename
+					if urlFileName != "" && !strings.HasSuffix(urlFileName, "/") {
+						fileName = urlFileName
+						appLogger.Printf("Extracted filename from URL: %s", fileName)
+					}
+				}
+			}
+		}
+
+		// Try to get filename from Content-Disposition header if still not found
+		if fileName == "" {
+			contentDisposition := httpResp.Header.Get("Content-Disposition")
+			if contentDisposition != "" {
+				if _, params, err := mime.ParseMediaType(contentDisposition); err == nil {
+					if fn, ok := params["filename"]; ok && fn != "" {
+						fileName = fn
+						appLogger.Printf("Extracted filename from Content-Disposition: %s", fileName)
+					}
+				}
+			}
 		}
 	} else if req.Media != "" {
 		// Decode base64 media
@@ -650,6 +692,7 @@ func sendMediaHandler(c *gin.Context, mediaType string) {
 				FileEncSHA256: uploaded.FileEncSHA256,
 				FileSHA256:    uploaded.FileSHA256,
 				FileLength:    proto.Uint64(uint64(len(media))),
+				FileName:      proto.String(fileName),
 			},
 		}
 	case "video":
@@ -663,6 +706,7 @@ func sendMediaHandler(c *gin.Context, mediaType string) {
 				FileEncSHA256: uploaded.FileEncSHA256,
 				FileSHA256:    uploaded.FileSHA256,
 				FileLength:    proto.Uint64(uint64(len(media))),
+				FileName:      proto.String(fileName),
 			},
 		}
 	case "file":
@@ -676,6 +720,7 @@ func sendMediaHandler(c *gin.Context, mediaType string) {
 				FileEncSHA256: uploaded.FileEncSHA256,
 				FileSHA256:    uploaded.FileSHA256,
 				FileLength:    proto.Uint64(uint64(len(media))),
+				FileName:      proto.String(fileName),
 			},
 		}
 	}
@@ -690,7 +735,10 @@ func sendMediaHandler(c *gin.Context, mediaType string) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"msg": mediaType + " sent successfully"})
+	c.JSON(http.StatusOK, gin.H{
+		"msg":       mediaType + " sent successfully",
+		"file_name": fileName,
+	})
 }
 
 func handleRestart(c *gin.Context) {
