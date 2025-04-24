@@ -315,17 +315,33 @@ func main() {
 	// Health check endpoint with detailed status
 	r.GET("/health", func(c *gin.Context) {
 		uptime := time.Since(startTime).String()
-		sessionCount := len(sessions)
 		
-		// Check if any sessions are logged in
-		activeCount := 0
-		sessionsLock.RLock()
-		for _, sess := range sessions {
-			if sess.IsLoggedIn {
-				activeCount++
+		// Use a try-lock approach to avoid deadlock during session initialization
+		// If we can't acquire the lock within a short time, proceed with partial data
+		var sessionCount, activeCount int
+		lockChan := make(chan struct{})
+		
+		go func() {
+			sessionsLock.RLock()
+			defer sessionsLock.RUnlock()
+			
+			sessionCount = len(sessions)
+			for _, sess := range sessions {
+				if sess.IsLoggedIn {
+					activeCount++
+				}
 			}
+			close(lockChan)
+		}()
+		
+		// Wait for the lock with timeout
+		select {
+		case <-lockChan:
+			// Lock acquired and data collected
+		case <-time.After(500 * time.Millisecond):
+			// Timeout - proceed with health check anyway
+			appLogger.Printf("Health check timed out waiting for sessions lock")
 		}
-		sessionsLock.RUnlock()
 		
 		// Log health check access for debugging
 		appLogger.Printf("Health check requested from %s", c.ClientIP())
@@ -343,17 +359,33 @@ func main() {
 	// Also add a /health/ endpoint with trailing slash to handle both versions
 	r.GET("/health/", func(c *gin.Context) {
 		uptime := time.Since(startTime).String()
-		sessionCount := len(sessions)
 		
-		// Check if any sessions are logged in
-		activeCount := 0
-		sessionsLock.RLock()
-		for _, sess := range sessions {
-			if sess.IsLoggedIn {
-				activeCount++
+		// Use a try-lock approach to avoid deadlock during session initialization
+		// If we can't acquire the lock within a short time, proceed with partial data
+		var sessionCount, activeCount int
+		lockChan := make(chan struct{})
+		
+		go func() {
+			sessionsLock.RLock()
+			defer sessionsLock.RUnlock()
+			
+			sessionCount = len(sessions)
+			for _, sess := range sessions {
+				if sess.IsLoggedIn {
+					activeCount++
+				}
 			}
+			close(lockChan)
+		}()
+		
+		// Wait for the lock with timeout
+		select {
+		case <-lockChan:
+			// Lock acquired and data collected
+		case <-time.After(500 * time.Millisecond):
+			// Timeout - proceed with health check anyway
+			appLogger.Printf("Health check (trailing slash) timed out waiting for sessions lock")
 		}
-		sessionsLock.RUnlock()
 		
 		// Log health check access for debugging
 		appLogger.Printf("Health check (with trailing slash) requested from %s", c.ClientIP())

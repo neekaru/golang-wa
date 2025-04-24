@@ -44,11 +44,15 @@
 
     # Reverse proxy to WhatsApp API
     reverse_proxy whatsapp-api:8080 {
-        # Health checks
+        # Health checks - more tolerant settings
         health_uri /health
         health_interval 30s
-        health_timeout 5s
+        health_timeout 10s            # Increased timeout
         health_status 200
+        lb_try_duration 10s           # Try to connect for longer
+        lb_try_interval 250ms         # Less aggressive retry interval
+        fail_duration 30s             # How long to consider a backend down
+        max_fails 5                   # Require more failures before marking down
 
         # Only keep necessary headers
         header_up X-Real-IP {remote_host}
