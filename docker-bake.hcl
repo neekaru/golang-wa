@@ -13,10 +13,10 @@ variable "IMAGE_NAME" {
 // Common settings for all targets
 target "docker-metadata-action" {
   context = "."
-  platforms = ["linux/amd64", "linux/arm64"]
+  platforms = ["linux/amd64"]
 }
 
-// Multi-platform build
+// Main build
 target "main" {
   inherits = ["docker-metadata-action"]
   tags = [
@@ -30,10 +30,9 @@ target "main" {
   ]
 }
 
-// x86 only build for latest tag
+// Latest tag build
 target "latest" {
-  context = "."
-  platforms = ["linux/amd64"]
+  inherits = ["docker-metadata-action"]
   tags = [
     "${REGISTRY}/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest"
   ]
