@@ -234,6 +234,37 @@ func main() {
 		}
 		sessionsLock.RUnlock()
 		
+		// Log health check access for debugging
+		appLogger.Printf("Health check requested from %s", c.ClientIP())
+		
+		// Always return 200 OK status
+		c.JSON(http.StatusOK, gin.H{
+			"status":           "ok",
+			"uptime":           uptime,
+			"total_sessions":   sessionCount,
+			"active_sessions":  activeCount,
+			"timestamp":        time.Now().Format(time.RFC3339),
+		})
+	})
+
+	// Also add a /health/ endpoint with trailing slash to handle both versions
+	r.GET("/health/", func(c *gin.Context) {
+		uptime := time.Since(startTime).String()
+		sessionCount := len(sessions)
+		
+		// Check if any sessions are logged in
+		activeCount := 0
+		sessionsLock.RLock()
+		for _, sess := range sessions {
+			if sess.IsLoggedIn {
+				activeCount++
+			}
+		}
+		sessionsLock.RUnlock()
+		
+		// Log health check access for debugging
+		appLogger.Printf("Health check (with trailing slash) requested from %s", c.ClientIP())
+		
 		c.JSON(http.StatusOK, gin.H{
 			"status":           "ok",
 			"uptime":           uptime,

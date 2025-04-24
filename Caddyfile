@@ -31,7 +31,7 @@
     # Reverse proxy to WhatsApp API
     reverse_proxy whatsapp-api:8080 {
         # Health checks
-        health_uri /
+        health_uri /health
         health_interval 30s
         health_timeout 5s
         health_status 200
