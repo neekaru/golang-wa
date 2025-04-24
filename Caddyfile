@@ -2,7 +2,7 @@
     # Reverse proxy all requests to the Go API on port 8080
     reverse_proxy whatsmeow-bot:8080 {
         # Health checks
-        health_path /
+        health_uri /
         health_interval 10s
         health_timeout 5s
     }
@@ -23,10 +23,14 @@
         Referrer-Policy no-referrer-when-downgrade
     }
 
-    # Basic DoS protection
-    rate_limit {
-        zone global {
-            requests 10 per 1s
-        }
+    # Basic request limits - using standard Caddy features
+    @abusers {
+        path_regexp needsprotection .*
+        header_regexp user-agent .*
+        rate_limit 10r/s 50r/m
+    }
+    
+    handle @abusers {
+        respond "Rate limit exceeded" 429
     }
 } 

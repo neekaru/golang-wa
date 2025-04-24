@@ -1,27 +1,24 @@
-FROM golang:1.24.2-alpine3.21 AS builder
+FROM golang:1.20-alpine AS builder
 
 WORKDIR /app
 COPY . .
 
-# Install gcc and required build tools
-RUN apk add --no-cache gcc musl-dev
-
 RUN go mod download
 
-RUN CGO_ENABLED=1 GOOS=linux go build -o bot .
+# Disable CGO but remove static build flags
+RUN CGO_ENABLED=0 GOOS=linux go build -o bot .
 
-FROM debian:bullseye-slim
+FROM alpine:3.19
 
-RUN apt-get update && \
-    apt-get install -y ca-certificates supervisor sqlite3 && \
-    rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache ca-certificates supervisor
 
 WORKDIR /app
 
 COPY --from=builder /app/bot /app/bot
 COPY supervisor.conf /etc/supervisor/conf.d/supervisord.conf
 
-RUN mkdir -p /var/log/supervisor /app/data
+RUN mkdir -p /var/log/supervisor /app/data && \
+    chmod +x /app/bot
 
 # Only exposing 8080 as Caddy will handle port 80
 EXPOSE 8080
