@@ -128,11 +128,11 @@ func restoreSession(user string) (*Session, error) {
 			session.IsLoggedIn = false
 		case *events.PushName:
 			if appLogger != nil {
-				appLogger.Printf("User %s push name updated: %s", user, e.Name)
+				appLogger.Printf("User %s push name updated: %s", user, e)
 			}
 		case *events.StreamError:
 			if appLogger != nil {
-				appLogger.Printf("User %s stream error: %v", user, e.Error)
+				appLogger.Printf("User %s stream error: %v", user, e)
 			}
 		case *events.QR:
 			if appLogger != nil {
