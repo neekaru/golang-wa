@@ -13,7 +13,7 @@
         format console
     }
     
-    # Set headers
+    # Set security headers
     header {
         # Enable HTTP Strict Transport Security (HSTS)
         Strict-Transport-Security "max-age=31536000;"
@@ -21,16 +21,19 @@
         X-Content-Type-Options nosniff
         # Keep referrer data off of HTTP connections
         Referrer-Policy no-referrer-when-downgrade
+        # Basic security headers
+        X-Frame-Options "SAMEORIGIN"
+        X-XSS-Protection "1; mode=block"
     }
 
-    # Basic request limits - using standard Caddy features
-    @abusers {
-        path_regexp needsprotection .*
-        header_regexp user-agent .*
-        rate_limit 10r/s 50r/m
+    # Basic request timeouts
+    timeouts {
+        read_body 10s
+        read_header 10s
+        write 30s
+        idle 2m
     }
-    
-    handle @abusers {
-        respond "Rate limit exceeded" 429
-    }
+
+    # Enable compression
+    encode gzip
 } 
