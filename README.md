@@ -52,6 +52,26 @@ The setup includes health checks for both services:
 - WhatsApp API: Checks the API endpoint every 30 seconds
 - Caddy: Verifies Caddy is running every 30 seconds
 
+## Docker Images
+
+The project provides Docker images with different platform support:
+
+### Latest Tag (x86_64 only)
+```bash
+# Use the latest stable version (x86_64/amd64 only)
+docker pull yourusername/whatsmeow-maiga:latest
+```
+
+### Main Branch (Multi-platform)
+```bash
+# Use the main branch version (supports both x86_64 and arm64)
+docker pull yourusername/whatsmeow-maiga:main
+```
+
+Platform support:
+- `latest` tag: linux/amd64 (x86_64) only
+- `main` tag: linux/amd64 (x86_64) and linux/arm64 (ARM64)
+
 ## GitHub Actions Deployment
 
 This repository is configured with GitHub Actions to automatically build and publish the Docker image to Docker Hub.
@@ -64,27 +84,18 @@ This repository is configured with GitHub Actions to automatically build and pub
    - `DOCKERHUB_TOKEN`: Your Docker Hub access token (create one at https://hub.docker.com/settings/security)
 
 3. The workflow will automatically:
-   - Build the Docker image when you push to the main branch
-   - Tag the image properly when you create a release tag (e.g., v1.0.0)
-   - Push the image to Docker Hub under your username/whatsmeow-maiga
+   - Build multi-platform images (amd64, arm64) for the main branch
+   - Build x86_64 only image for the latest tag
+   - Push images to Docker Hub under your username/whatsmeow-maiga
 
-### Using Tagged Releases
-
-To create a specific version:
+### Using Different Tags
 
 ```bash
-# Tag a release
-git tag v1.0.0
-git push origin v1.0.0
+# Use the latest stable version (x86_64 only)
+TAG=latest docker-compose up -d
 
-# This will trigger the workflow to build and push:
-# yourusername/whatsmeow-maiga:1.0.0
-# yourusername/whatsmeow-maiga:1.0
-# yourusername/whatsmeow-maiga:1
-# yourusername/whatsmeow-maiga:latest
-
-# To use a specific version in docker-compose:
-TAG=1.0.0 docker-compose up -d
+# Use the main branch version (multi-platform)
+TAG=main docker-compose up -d
 ```
 
 ## API Documentation
