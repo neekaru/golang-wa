@@ -59,13 +59,13 @@ The project provides Docker images with different platform support:
 ### Latest Tag (x86_64 only)
 ```bash
 # Use the latest stable version (x86_64/amd64 only)
-docker pull yourusername/whatsmeow-maiga:latest
+docker pull nekru/whatsmeow-maiga:latest
 ```
 
 ### Main Branch (Multi-platform)
 ```bash
 # Use the main branch version (supports both x86_64 and arm64)
-docker pull yourusername/whatsmeow-maiga:main
+docker pull nekru/whatsmeow-maiga:main
 ```
 
 Platform support:
