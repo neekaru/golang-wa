@@ -6,7 +6,7 @@ COPY . .
 RUN go mod download
 
 # Disable CGO but remove static build flags
-RUN CGO_ENABLED=0 GOOS=linux go build -o bot .
+RUN CGO_ENABLED=1 GOOS=linux go build -o bot .
 
 FROM alpine:3.21.3
 
