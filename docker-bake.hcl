@@ -3,7 +3,7 @@ variable "REGISTRY" {
 }
 
 variable "DOCKERHUB_USERNAME" {
-  default = ""
+  default = "nekru"
 }
 
 variable "IMAGE_NAME" {
@@ -13,25 +13,39 @@ variable "IMAGE_NAME" {
 // Common settings for all targets
 target "docker-metadata-action" {
   context = "."
-  dockerfile = "Dockerfile"
   platforms = ["linux/amd64", "linux/arm64"]
 }
 
-// Main branch target - multi-platform
+// Multi-platform build
 target "main" {
   inherits = ["docker-metadata-action"]
-  tags = ["${REGISTRY}/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:main"]
+  tags = [
+    "${REGISTRY}/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:main"
+  ]
+  cache-from = [
+    "type=gha,scope=main"
+  ]
+  cache-to = [
+    "type=gha,mode=max,scope=main"
+  ]
 }
 
-// Latest tag target - x86 only
+// x86 only build for latest tag
 target "latest" {
   context = "."
-  dockerfile = "Dockerfile"
   platforms = ["linux/amd64"]
-  tags = ["${REGISTRY}/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest"]
+  tags = [
+    "${REGISTRY}/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest"
+  ]
+  cache-from = [
+    "type=gha,scope=latest"
+  ]
+  cache-to = [
+    "type=gha,mode=max,scope=latest"
+  ]
 }
 
-// Default group includes both targets for concurrent building
+// Default group includes both targets
 group "default" {
   targets = ["main", "latest"]
 } 

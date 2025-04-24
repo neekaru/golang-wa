@@ -1,12 +1,8 @@
 {
     # Global options
-    admin off  # Disable admin interface
-    auto_https disable_redirects  # Prevent double redirects
-    # Trust Cloudflare's IPs
-    servers {
-        trusted_proxies static private_ranges cloudflare
-        protocols h1 h2
-    }
+    admin off
+    # Enable automatic HTTPS
+    email admin@yourdomain.com  # Replace with your email
 }
 
 # Replace with your subdomain, e.g., api.yourdomain.com
@@ -16,6 +12,8 @@
 
     # Security headers
     header {
+        # Enable HSTS
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
         # Disable FLoC tracking
         Permissions-Policy "interest-cohort=()"
         # XSS protection
@@ -24,12 +22,10 @@
         X-Content-Type-Options "nosniff"
         # Referrer policy
         Referrer-Policy "strict-origin-when-cross-origin"
-        # Frame options - adjusted to allow Cloudflare
-        X-Frame-Options "SAMEORIGIN"
+        # Frame options
+        X-Frame-Options "DENY"
         # Remove Server header
         -Server
-        # Allow Cloudflare to cache
-        Cache-Control "public, max-age=3600"
     }
 
     # Reverse proxy to WhatsApp API
@@ -40,10 +36,10 @@
         health_timeout 5s
         health_status 200
 
-        # Proxy headers for Cloudflare
-        header_up X-Real-IP {http.request.header.CF-Connecting-IP}
-        header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
-        header_up X-Forwarded-Proto {http.request.header.X-Forwarded-Proto}
+        # Standard proxy headers
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
         header_up Host {host}
     }
 
@@ -55,6 +51,8 @@
             message_key message
             level_key level
             fields {
+                request>remote_ip {remote_host}
+                request>user_agent {request.header.User-Agent}
                 request>real_ip {http.request.header.CF-Connecting-IP}
                 request>country {http.request.header.CF-IPCountry}
                 request>user_agent {http.request.header.User-Agent}
