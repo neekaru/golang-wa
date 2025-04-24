@@ -26,7 +26,7 @@ curl -X GET "http://localhost:8080/wa/qr-image?user=test_user"
 Check if a session is connected and authenticated.
 
 ```bash
-curl -X POST "http://localhost:8080/wa/status?user=test_user"
+curl -X GET "http://localhost:8080/wa/status?user=test_user"
 ```
 
 ### 4. Restart Session
@@ -57,7 +57,7 @@ curl -X POST http://localhost:8080/send \
   -H "Content-Type: application/json" \
   -d '{
     "user": "test_user",
-    "to": "1234567890",
+    "phone_number": "1234567890",
     "message": "Hello, World!"
   }'
 ```
@@ -151,6 +151,43 @@ curl -X POST http://localhost:8080/msg/read \
   }'
 ```
 
+## Health Check Endpoints
+
+### 1. Root Health Check
+Simple health check endpoint with basic information.
+
+```bash
+curl -X GET http://localhost:8080/
+```
+
+Response:
+```json
+{
+  "status": "ok",
+  "uptime": "3h5m10s",
+  "session_count": 2,
+  "version": "1.0.0"
+}
+```
+
+### 2. Detailed Health Check
+Detailed health check with session information.
+
+```bash
+curl -X GET http://localhost:8080/health
+```
+
+Response:
+```json
+{
+  "status": "ok",
+  "uptime": "3h5m10s",
+  "total_sessions": 2,
+  "active_sessions": 1,
+  "timestamp": "2023-09-15T12:34:56Z"
+}
+```
+
 ## Response Format
 
 All endpoints return JSON responses in the following format:
@@ -178,3 +215,6 @@ All endpoints return JSON responses in the following format:
    - Direct URL to the media with the `url` parameter
 4. Session must be created and authenticated before sending messages
 5. All endpoints run on `localhost:8080` by default
+6. The server is designed to handle multiple WhatsApp sessions simultaneously
+7. Sessions are persisted to the filesystem in the "data" directory
+8. The server supports graceful shutdown when receiving SIGINT or SIGTERM signals

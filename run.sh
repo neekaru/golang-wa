@@ -27,6 +27,8 @@ print_usage() {
     echo -e "  ${GREEN}logs${NC}       - Show logs for all containers"
     echo -e "  ${GREEN}logs caddy${NC} - Show logs for the Caddy container"
     echo -e "  ${GREEN}logs api${NC}   - Show logs for the WhatsApp API container"
+    echo -e "  ${GREEN}format-caddy${NC} - Format the Caddyfile and restart Caddy"
+    echo -e "  ${GREEN}status${NC}     - Check the status of all containers"
     echo ""
 }
 
@@ -102,6 +104,34 @@ show_logs() {
     fi
 }
 
+# Format Caddyfile
+format_caddyfile() {
+    echo -e "${BLUE}Formatting Caddyfile...${NC}"
+    docker run --rm -v "$(pwd)/Caddyfile:/etc/caddy/Caddyfile" caddy:2.7-alpine caddy fmt --overwrite /etc/caddy/Caddyfile
+    
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}Caddyfile formatted successfully${NC}"
+        
+        # Restart Caddy to apply changes
+        echo -e "${BLUE}Restarting Caddy container...${NC}"
+        docker compose restart caddy
+        
+        if [ $? -eq 0 ]; then
+            echo -e "${GREEN}Caddy container restarted successfully${NC}"
+        else
+            echo -e "${RED}Failed to restart Caddy container${NC}"
+        fi
+    else
+        echo -e "${RED}Failed to format Caddyfile${NC}"
+    fi
+}
+
+# Show container status
+show_status() {
+    echo -e "${BLUE}Checking container status...${NC}"
+    docker compose ps
+}
+
 # Main function
 main() {
     print_header
@@ -127,6 +157,12 @@ main() {
             ;;
         logs)
             show_logs "$2"
+            ;;
+        format-caddy)
+            format_caddyfile
+            ;;
+        status)
+            show_status
             ;;
         *)
             echo -e "${RED}Unknown command: $1${NC}"

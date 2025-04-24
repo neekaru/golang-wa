@@ -40,6 +40,12 @@ function Print-Usage {
     Write-Host "  " -NoNewline
     Write-Host "logs api" -ForegroundColor $green -NoNewline
     Write-Host "   - Show logs for the WhatsApp API container"
+    Write-Host "  " -NoNewline
+    Write-Host "format-caddy" -ForegroundColor $green -NoNewline
+    Write-Host " - Format the Caddyfile and restart Caddy"
+    Write-Host "  " -NoNewline
+    Write-Host "status" -ForegroundColor $green -NoNewline
+    Write-Host "     - Check the status of all containers"
     Write-Host ""
 }
 
@@ -129,6 +135,42 @@ function Show-Logs {
     }
 }
 
+# Format Caddyfile
+function Format-Caddyfile {
+    Write-Host "Formatting Caddyfile..." -ForegroundColor $blue
+    
+    # Get current path for mounting
+    $currentPath = (Get-Location).Path
+    $mountPath = $currentPath -replace "\\", "/"
+    
+    # Format the Caddyfile
+    docker run --rm -v "${mountPath}/Caddyfile:/etc/caddy/Caddyfile" caddy:2.7-alpine caddy fmt --overwrite /etc/caddy/Caddyfile
+    
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "Caddyfile formatted successfully" -ForegroundColor $green
+        
+        # Restart Caddy to apply changes
+        Write-Host "Restarting Caddy container..." -ForegroundColor $blue
+        docker compose restart caddy
+        
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "Caddy container restarted successfully" -ForegroundColor $green
+        }
+        else {
+            Write-Host "Failed to restart Caddy container" -ForegroundColor $red
+        }
+    }
+    else {
+        Write-Host "Failed to format Caddyfile" -ForegroundColor $red
+    }
+}
+
+# Show container status
+function Show-Status {
+    Write-Host "Checking container status..." -ForegroundColor $blue
+    docker compose ps
+}
+
 # Main function
 function Main {
     param (
@@ -162,6 +204,12 @@ function Main {
         }
         "logs" {
             Show-Logs -Container $SubCommand
+        }
+        "format-caddy" {
+            Format-Caddyfile
+        }
+        "status" {
+            Show-Status
         }
         default {
             Write-Host "Unknown command: $Command" -ForegroundColor $red

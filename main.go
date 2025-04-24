@@ -40,11 +40,13 @@ type Session struct {
 var (
 	sessions     = make(map[string]*Session)
 	sessionsLock = sync.RWMutex{}
+	startTime    = time.Now() // Track startup time for health checks
 )
 
 func restoreSession(user string) (*Session, error) {
+	dbPath := "data/" + user + ".db"
 	dbLog := waLog.Stdout("Database", "INFO", true)
-	container, err := sqlstore.New("sqlite3", "file:"+user+".db?_foreign_keys=on", dbLog)
+	container, err := sqlstore.New("sqlite3", "file:"+dbPath+"?_foreign_keys=on", dbLog)
 	if err != nil {
 		return nil, fmt.Errorf("database error: %v", err)
 	}
@@ -102,12 +104,14 @@ func findSessionByUser(user string) (*Session, bool) {
 }
 
 func main() {
-	// Database directory check
-	if _, err := os.Stat("./"); err != nil && os.IsNotExist(err) {
-		os.MkdirAll("./", 0755)
-	}
+	// Set Gin to release mode in production
+	gin.SetMode(gin.ReleaseMode)
 
-	files, err := os.ReadDir("./")
+	// Ensure data directory exists
+	os.MkdirAll("data", 0755)
+
+	// Database directory check
+	files, err := os.ReadDir("data")
 	if err == nil {
 		// Restore all existing sessions
 		for _, file := range files {
@@ -117,21 +121,56 @@ func main() {
 					sessionsLock.Lock()
 					sessions[user] = sess
 					sessionsLock.Unlock()
+					fmt.Printf("Restored session for user: %s\n", user)
 				}
 			}
 		}
 	}
 
-	r := gin.Default()
+	r := gin.New()
+	r.Use(gin.Recovery())
+	r.Use(gin.Logger())
 
-	// Simple test endpoint
+	// Enhanced health check endpoint for Docker
 	r.GET("/", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"msg": "it works"})
+		uptime := time.Since(startTime).String()
+		sessionCount := len(sessions)
+		c.JSON(http.StatusOK, gin.H{
+			"status":        "ok",
+			"uptime":        uptime,
+			"session_count": sessionCount,
+			"version":       "1.0.0",
+		})
+	})
+
+	// Health check endpoint with detailed status
+	r.GET("/health", func(c *gin.Context) {
+		uptime := time.Since(startTime).String()
+		sessionCount := len(sessions)
+		
+		// Check if any sessions are logged in
+		activeCount := 0
+		sessionsLock.RLock()
+		for _, sess := range sessions {
+			if sess.IsLoggedIn {
+				activeCount++
+			}
+		}
+		sessionsLock.RUnlock()
+		
+		c.JSON(http.StatusOK, gin.H{
+			"status":           "ok",
+			"uptime":           uptime,
+			"total_sessions":   sessionCount,
+			"active_sessions":  activeCount,
+			"timestamp":        time.Now().Format(time.RFC3339),
+		})
 	})
 
 	r.POST("/wa/add", handleAddSession)
 	r.GET("/wa/qr-image", handleQRImage)
 	r.POST("/wa/status", handleStatus)
+	r.GET("/wa/status", handleStatus)  // Add GET method for status
 	r.POST("/wa/restart", handleRestart)
 	r.POST("/wa/logout", handleLogout)
 
@@ -145,21 +184,26 @@ func main() {
 	// Only use port 8080, Caddy will handle port 80
 	srv := &http.Server{Addr: ":8080", Handler: r}
 	go func() {
+		fmt.Println("🚀 WhatsApp bot running on :8080")
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			fmt.Println("Server error:", err)
+			fmt.Printf("Server error: %v\n", err)
 		}
 	}()
-	fmt.Println("🚀 WhatsApp bot running on :8080")
 
+	// Graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	fmt.Println("🚫 Shutting down...")
+	fmt.Println("🚫 Shutting down server...")
 	
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	
-	_ = srv.Shutdown(ctx)
+	if err := srv.Shutdown(ctx); err != nil {
+		fmt.Printf("Server forced to shutdown: %v\n", err)
+	}
+	
+	fmt.Println("Server exited")
 }
 
 func handleSendMessage(c *gin.Context) {
@@ -469,7 +513,11 @@ func handleStatus(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"logged_in": sess.IsLoggedIn})
+	c.JSON(http.StatusOK, gin.H{
+		"logged_in": sess.IsLoggedIn,
+		"connected": sess.Client.IsConnected(),
+		"user":      user,
+	})
 }
 
 func handleAddSession(c *gin.Context) {
@@ -481,9 +529,14 @@ func handleAddSession(c *gin.Context) {
 		return
 	}
 
+	// Ensure data directory exists
+	os.MkdirAll("data", 0755)
+
+	dbPath := "data/" + req.User + ".db"
+	
 	// Initialize the database connection
 	dbLog := waLog.Stdout("Database", "INFO", true)
-	container, err := sqlstore.New("sqlite3", "file:"+req.User+".db?_foreign_keys=on", dbLog)
+	container, err := sqlstore.New("sqlite3", "file:"+dbPath+"?_foreign_keys=on", dbLog)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "DB error: " + err.Error()})
 		return
@@ -661,7 +714,7 @@ func handleLogout(c *gin.Context) {
 		}
 
 		// Step 3: Delete database file
-		dbFile := req.User + ".db"
+		dbFile := "data/" + req.User + ".db"
 		if err := os.Remove(dbFile); err != nil {
 			fmt.Printf("Error deleting database file for %s: %v\n", req.User, err)
 		} else {
