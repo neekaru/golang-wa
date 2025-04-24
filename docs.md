@@ -63,43 +63,76 @@ curl -X POST http://localhost:8080/send \
 ```
 
 ### 2. Send Image
-Send an image with optional caption. The image should be base64 encoded.
+Send an image with optional caption. The image can be provided as base64 encoded data or a URL.
 
 ```bash
+# Using base64 encoded image data
 curl -X POST http://localhost:8080/send/image \
   -H "Content-Type: application/json" \
   -d '{
     "user": "test_user",
-    "to": "1234567890",
+    "phone_number": "1234567890",
     "media": "BASE64_ENCODED_IMAGE_DATA",
+    "caption": "Check out this image!"
+  }'
+
+# Using a URL
+curl -X POST http://localhost:8080/send/image \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user": "test_user",
+    "phone_number": "1234567890",
+    "url": "https://example.com/image.jpg",
     "caption": "Check out this image!"
   }'
 ```
 
 ### 3. Send Video
-Send a video with optional caption. The video should be base64 encoded.
+Send a video with optional caption. The video can be provided as base64 encoded data or a URL.
 
 ```bash
+# Using base64 encoded video data
 curl -X POST http://localhost:8080/send/video \
   -H "Content-Type: application/json" \
   -d '{
     "user": "test_user",
-    "to": "1234567890",
+    "phone_number": "1234567890",
     "media": "BASE64_ENCODED_VIDEO_DATA",
+    "caption": "Check out this video!"
+  }'
+
+# Using a URL
+curl -X POST http://localhost:8080/send/video \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user": "test_user",
+    "phone_number": "1234567890",
+    "url": "https://example.com/video.mp4",
     "caption": "Check out this video!"
   }'
 ```
 
 ### 4. Send File
-Send any type of file with optional caption. The file should be base64 encoded.
+Send any type of file with optional caption. The file can be provided as base64 encoded data or a URL.
 
 ```bash
+# Using base64 encoded file data
 curl -X POST http://localhost:8080/send/file \
   -H "Content-Type: application/json" \
   -d '{
     "user": "test_user",
-    "to": "1234567890",
+    "phone_number": "1234567890",
     "media": "BASE64_ENCODED_FILE_DATA",
+    "caption": "Here's the document!"
+  }'
+
+# Using a URL
+curl -X POST http://localhost:8080/send/file \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user": "test_user",
+    "phone_number": "1234567890",
+    "url": "https://example.com/document.pdf",
     "caption": "Here's the document!"
   }'
 ```
@@ -140,6 +173,8 @@ All endpoints return JSON responses in the following format:
 
 1. Replace `test_user` with your actual user identifier
 2. Phone numbers should be in international format without any special characters (e.g., "1234567890")
-3. For media uploads, ensure the base64 data is properly encoded
+3. For media uploads, you can use either:
+   - Base64 encoded data with the `media` parameter
+   - Direct URL to the media with the `url` parameter
 4. Session must be created and authenticated before sending messages
 5. All endpoints run on `localhost:8080` by default

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/signal"
@@ -252,6 +253,7 @@ func sendMediaHandler(c *gin.Context, mediaType string) {
 		User        string `json:"user"`
 		PhoneNumber string `json:"phone_number"`
 		Media       string `json:"media"`
+		URL         string `json:"url"`
 		Caption     string `json:"caption"`
 	}
 	if err := c.BindJSON(&req); err != nil {
@@ -290,10 +292,45 @@ func sendMediaHandler(c *gin.Context, mediaType string) {
 		Server: "s.whatsapp.net",
 	}
 
-	// Decode base64 media
-	media, err := base64.StdEncoding.DecodeString(req.Media)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid media format"})
+	var media []byte
+	var mimeType string
+
+	// Check if URL or base64 media is provided
+	if req.URL != "" {
+		// Download media from URL
+		httpResp, err := http.Get(req.URL)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to download media from URL: " + err.Error()})
+			return
+		}
+		defer httpResp.Body.Close()
+		
+		if httpResp.StatusCode != http.StatusOK {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to download media, status: " + httpResp.Status})
+			return
+		}
+		
+		media, err = io.ReadAll(httpResp.Body)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read media from URL: " + err.Error()})
+			return
+		}
+		
+		mimeType = httpResp.Header.Get("Content-Type")
+		if mimeType == "" {
+			mimeType = http.DetectContentType(media)
+		}
+	} else if req.Media != "" {
+		// Decode base64 media
+		var err error
+		media, err = base64.StdEncoding.DecodeString(req.Media)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid media format"})
+			return
+		}
+		mimeType = http.DetectContentType(media)
+	} else {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Either media or URL must be provided"})
 		return
 	}
 
@@ -322,7 +359,7 @@ func sendMediaHandler(c *gin.Context, mediaType string) {
 				URL:           proto.String(uploaded.URL),
 				DirectPath:    proto.String(uploaded.DirectPath),
 				MediaKey:      uploaded.MediaKey,
-				Mimetype:      proto.String(http.DetectContentType(media)),
+				Mimetype:      proto.String(mimeType),
 				FileEncSHA256: uploaded.FileEncSHA256,
 				FileSHA256:    uploaded.FileSHA256,
 				FileLength:    proto.Uint64(uint64(len(media))),
@@ -335,7 +372,7 @@ func sendMediaHandler(c *gin.Context, mediaType string) {
 				URL:           proto.String(uploaded.URL),
 				DirectPath:    proto.String(uploaded.DirectPath),
 				MediaKey:      uploaded.MediaKey,
-				Mimetype:      proto.String(http.DetectContentType(media)),
+				Mimetype:      proto.String(mimeType),
 				FileEncSHA256: uploaded.FileEncSHA256,
 				FileSHA256:    uploaded.FileSHA256,
 				FileLength:    proto.Uint64(uint64(len(media))),
@@ -348,7 +385,7 @@ func sendMediaHandler(c *gin.Context, mediaType string) {
 				URL:           proto.String(uploaded.URL),
 				DirectPath:    proto.String(uploaded.DirectPath),
 				MediaKey:      uploaded.MediaKey,
-				Mimetype:      proto.String(http.DetectContentType(media)),
+				Mimetype:      proto.String(mimeType),
 				FileEncSHA256: uploaded.FileEncSHA256,
 				FileSHA256:    uploaded.FileSHA256,
 				FileLength:    proto.Uint64(uint64(len(media))),
