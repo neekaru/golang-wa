@@ -26,11 +26,10 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
-      - caddy_logs:/var/log/caddy
-      - /etc/ssl/certs:/etc/ssl/certs:ro
+      - ./logs:/var/log/caddy
     networks:
       - whatsapp-network
     depends_on:
@@ -44,7 +43,6 @@ services:
 volumes:
   caddy_data:
   caddy_config:
-  caddy_logs:
 
 networks:
   whatsapp-network:
