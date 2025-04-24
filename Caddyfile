@@ -41,15 +41,9 @@
         header_up Host {host}
     }
 
-    # Access logging
+    # Simple access logging
     log {
         output file /var/log/caddy/access.log
-        format json {
-            time_format "iso8601"
-            level_format "upper"
-            message_key "msg"
-            level_key "level"
-            timestamps "ts"
-        }
+        format json
     }
 } 
