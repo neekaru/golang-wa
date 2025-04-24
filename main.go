@@ -692,7 +692,6 @@ func sendMediaHandler(c *gin.Context, mediaType string) {
 				FileEncSHA256: uploaded.FileEncSHA256,
 				FileSHA256:    uploaded.FileSHA256,
 				FileLength:    proto.Uint64(uint64(len(media))),
-				FileName:      proto.String(fileName),
 			},
 		}
 	case "video":
@@ -706,7 +705,6 @@ func sendMediaHandler(c *gin.Context, mediaType string) {
 				FileEncSHA256: uploaded.FileEncSHA256,
 				FileSHA256:    uploaded.FileSHA256,
 				FileLength:    proto.Uint64(uint64(len(media))),
-				FileName:      proto.String(fileName),
 			},
 		}
 	case "file":
