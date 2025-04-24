@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -66,7 +67,10 @@ func setupLogging() (*log.Logger, error) {
 	multiWriter := io.MultiWriter(os.Stdout, logFile)
 	logger := log.New(multiWriter, "", log.LstdFlags|log.Lshortfile)
 	logger.Printf("Logging initialized to %s", logFilePath)
-
+	
+	// Print log location for easier access
+	fmt.Printf("Logs are being written to: %s\n", logFilePath)
+	
 	return logger, nil
 }
 
@@ -109,9 +113,42 @@ func restoreSession(user string) (*Session, error) {
 		IsLoggedIn: false,
 	}
 
+	// Add connection event handler that properly updates the session state
+	client.AddEventHandler(func(evt interface{}) {
+		switch e := evt.(type) {
+		case *events.Connected:
+			if appLogger != nil {
+				appLogger.Printf("User %s connected to WhatsApp", user)
+			}
+			session.IsLoggedIn = true
+		case *events.LoggedOut:
+			if appLogger != nil {
+				appLogger.Printf("User %s logged out from WhatsApp", user)
+			}
+			session.IsLoggedIn = false
+		case *events.PushName:
+			if appLogger != nil {
+				appLogger.Printf("User %s push name updated: %s", user, e.Name)
+			}
+		case *events.StreamError:
+			if appLogger != nil {
+				appLogger.Printf("User %s stream error: %v", user, e.Error)
+			}
+		case *events.QR:
+			if appLogger != nil {
+				appLogger.Printf("User %s received new QR code", user)
+			}
+		}
+	})
+
 	// Attempt to restore connection if device is already registered
 	if client.Store.ID != nil {
-		err = client.Connect()
+		if appLogger != nil {
+			appLogger.Printf("Device is registered for user %s, attempting to connect", user)
+		}
+		
+		// Try to connect with retry logic for transient errors
+		err = connectWithRetry(client, user)
 		if err == nil {
 			session.IsLoggedIn = true
 			if appLogger != nil {
@@ -119,10 +156,55 @@ func restoreSession(user string) (*Session, error) {
 			}
 		} else if appLogger != nil {
 			appLogger.Printf("Failed to connect existing session for user %s: %v", user, err)
+			// Don't return error here, as we want to return the session anyway
+			// The client can try to reconnect later
 		}
+	} else if appLogger != nil {
+		appLogger.Printf("Device not yet registered for user %s, QR code needed", user)
 	}
 
 	return session, nil
+}
+
+// Helper function to connect with retry logic
+func connectWithRetry(client *whatsmeow.Client, user string) error {
+	var err error
+	maxRetries := 3
+	
+	for i := 0; i < maxRetries; i++ {
+		// If client is already connected, disconnect first to avoid "already connected" errors
+		if client.IsConnected() {
+			if appLogger != nil {
+				appLogger.Printf("Client for user %s is already connected, disconnecting first", user)
+			}
+			client.Disconnect()
+			time.Sleep(500 * time.Millisecond)
+		}
+		
+		err = client.Connect()
+		if err == nil {
+			return nil // Successfully connected
+		}
+		
+		if strings.Contains(err.Error(), "websocket is already connected") {
+			// Special handling for this common error
+			if appLogger != nil {
+				appLogger.Printf("Got 'already connected' error for user %s, trying again after disconnect (attempt %d/%d)", 
+					user, i+1, maxRetries)
+			}
+			client.Disconnect()
+			time.Sleep(1 * time.Second) // Longer wait after this specific error
+		} else {
+			// For other errors, try again with shorter wait
+			if appLogger != nil {
+				appLogger.Printf("Connection error for user %s: %v (attempt %d/%d)", 
+					user, err, i+1, maxRetries)
+			}
+			time.Sleep(500 * time.Millisecond)
+		}
+	}
+	
+	return err // Return the last error
 }
 
 func findSessionByUser(user string) (*Session, bool) {
@@ -586,9 +668,17 @@ func handleRestart(c *gin.Context) {
 		return
 	}
 
+	appLogger.Printf("Restarting session for user: %s", user)
+
 	// First disconnect existing session if it exists
 	if oldSess, exists := findSessionByUser(user); exists {
-		oldSess.Client.Disconnect()
+		appLogger.Printf("Disconnecting existing session for user: %s", user)
+		// Safe disconnect with retry
+		if oldSess.Client.IsConnected() {
+			oldSess.Client.Disconnect()
+			// Give it a moment to properly disconnect
+			time.Sleep(500 * time.Millisecond)
+		}
 
 		// Remove from memory to force database restoration
 		sessionsLock.Lock()
@@ -599,23 +689,70 @@ func handleRestart(c *gin.Context) {
 	// Attempt to restore session from database
 	sess, err := restoreSession(user)
 	if err != nil {
+		appLogger.Printf("Failed to restore session for user %s: %v", user, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to restore session: " + err.Error()})
 		return
 	}
+
+	appLogger.Printf("Session restored from database for user: %s", user)
 
 	// Add restored session to memory
 	sessionsLock.Lock()
 	sessions[user] = sess
 	sessionsLock.Unlock()
 
-	// Connect the restored session
+	// Connect the restored session with retry logic
 	err = sess.Client.Connect()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to connect restored session: " + err.Error()})
-		return
+		// Try to handle specific error types
+		if strings.Contains(err.Error(), "websocket is already connected") {
+			appLogger.Printf("Got 'already connected' error for %s, trying to disconnect and reconnect", user)
+			// Force disconnect and try again after a delay
+			sess.Client.Disconnect()
+			time.Sleep(1 * time.Second)
+			err = sess.Client.Connect()
+			if err != nil {
+				appLogger.Printf("Failed to connect after retry for user %s: %v", user, err)
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "Failed to connect after retry: " + err.Error(),
+					"status": map[string]interface{}{
+						"logged_in": sess.IsLoggedIn,
+						"connected": sess.Client.IsConnected(),
+						"user":      user,
+					},
+				})
+				return
+			}
+		} else {
+			appLogger.Printf("Failed to connect for user %s: %v", user, err)
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to connect restored session: " + err.Error(),
+				"status": map[string]interface{}{
+					"logged_in": sess.IsLoggedIn,
+					"connected": sess.Client.IsConnected(),
+					"user":      user,
+				},
+			})
+			return
+		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{"msg": "Session restored and connected successfully"})
+	// Get connection details after reconnection
+	isLoggedIn := sess.IsLoggedIn
+	isConnected := sess.Client.IsConnected()
+
+	appLogger.Printf("Session successfully reconnected for user: %s (logged_in=%v, connected=%v)", 
+		user, isLoggedIn, isConnected)
+	
+	c.JSON(http.StatusOK, gin.H{
+		"msg": "Session restored and connected successfully",
+		"status": map[string]interface{}{
+			"logged_in": isLoggedIn,
+			"connected": isConnected,
+			"user":      user,
+			"needs_qr":  !isLoggedIn || !isConnected,
+		},
+	})
 }
 
 func handleStatus(c *gin.Context) {
@@ -631,10 +768,21 @@ func handleStatus(c *gin.Context) {
 		return
 	}
 
+	// Get connection details
+	isLoggedIn := sess.IsLoggedIn
+	isConnected := sess.Client.IsConnected()
+	
+	// Log the status check
+	appLogger.Printf("Status check for user %s: logged_in=%v, connected=%v", 
+		user, isLoggedIn, isConnected)
+
+	// Return detailed status
 	c.JSON(http.StatusOK, gin.H{
-		"logged_in": sess.IsLoggedIn,
-		"connected": sess.Client.IsConnected(),
+		"logged_in": isLoggedIn,
+		"connected": isConnected,
 		"user":      user,
+		"needs_qr":  !isLoggedIn || !isConnected,
+		"timestamp": time.Now().Format(time.RFC3339),
 	})
 }
 
@@ -702,10 +850,31 @@ func handleQRImage(c *gin.Context) {
 		return
 	}
 
-	if sess.IsLoggedIn {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Session is already connected"})
+	// Check both logged_in and connection status
+	if sess.IsLoggedIn && sess.Client.IsConnected() {
+		appLogger.Printf("User %s is already logged in and connected, no QR code needed", user)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Session is already logged in and connected. No QR code needed.",
+			"status": map[string]interface{}{
+				"logged_in": sess.IsLoggedIn,
+				"connected": sess.Client.IsConnected(),
+				"user":      user,
+			},
+		})
 		return
 	}
+
+	// Always disconnect first to avoid "websocket is already connected" error
+	// This is safe to call even if not connected
+	if sess.Client.IsConnected() {
+		appLogger.Printf("Disconnecting existing connection for user %s before generating QR", user)
+		sess.Client.Disconnect()
+		// Small delay to ensure disconnection is complete
+		time.Sleep(500 * time.Millisecond)
+	}
+
+	// Reset login state to be safe
+	sess.IsLoggedIn = false
 
 	// Set up a channel to receive the QR code
 	qrCodeChan := make(chan string, 1)
@@ -718,11 +887,24 @@ func handleQRImage(c *gin.Context) {
 		// Set up event handlers before connecting
 		qrChan, _ := client.GetQRChannel(context.Background())
 
-		// Connect the client
+		// Connect the client with error handling
 		err := client.Connect()
 		if err != nil {
-			errorChan <- fmt.Errorf("failed to connect client: %v", err)
-			return
+			// Try to handle specific error types
+			if strings.Contains(err.Error(), "websocket is already connected") {
+				appLogger.Printf("Got 'already connected' error for %s, trying to disconnect and reconnect", user)
+				// Force disconnect and try again after a delay
+				client.Disconnect()
+				time.Sleep(1 * time.Second)
+				err = client.Connect()
+				if err != nil {
+					errorChan <- fmt.Errorf("failed to connect client after retry: %v", err)
+					return
+				}
+			} else {
+				errorChan <- fmt.Errorf("failed to connect client: %v", err)
+				return
+			}
 		}
 
 		// Add connection event handler
@@ -730,8 +912,10 @@ func handleQRImage(c *gin.Context) {
 			switch evt.(type) {
 			case *events.Connected:
 				sess.IsLoggedIn = true
+				appLogger.Printf("User %s connection state changed to: connected", user)
 			case *events.LoggedOut:
 				sess.IsLoggedIn = false
+				appLogger.Printf("User %s connection state changed to: logged out", user)
 			}
 		})
 
@@ -743,6 +927,8 @@ func handleQRImage(c *gin.Context) {
 					sess.QRLock.Lock()
 					sess.LatestQRCode = evt.Code
 					sess.QRLock.Unlock()
+
+					appLogger.Printf("Generated QR code for user %s", user)
 
 					// Generate QR code image
 					qr, err := qrcode.New(evt.Code, qrcode.Medium)
