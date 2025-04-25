@@ -69,22 +69,22 @@ func setupLogging() (*log.Logger, error) {
 	multiWriter := io.MultiWriter(os.Stdout, logFile)
 	logger := log.New(multiWriter, "", log.LstdFlags|log.Lshortfile)
 	logger.Printf("Logging initialized to %s", logFilePath)
-	
+
 	// Print log location for easier access
 	fmt.Printf("Logs are being written to: %s\n", logFilePath)
-	
+
 	return logger, nil
 }
 
 func restoreSession(user string) (*Session, error) {
 	dbPath := "data/" + user + ".db"
-	
+
 	// Create a logger specifically for this database connection
 	dbLogger := waLog.Stdout("Database-"+user, "INFO", true)
 	if appLogger != nil {
 		appLogger.Printf("Creating/restoring session for user: %s at %s", user, dbPath)
 	}
-	
+
 	container, err := sqlstore.New("sqlite3", "file:"+dbPath+"?_foreign_keys=on", dbLogger)
 	if err != nil {
 		if appLogger != nil {
@@ -103,7 +103,7 @@ func restoreSession(user string) (*Session, error) {
 
 	store.SetOSInfo("Linux", store.GetWAVersion())
 	store.DeviceProps.PlatformType = waCompanionReg.DeviceProps_CHROME.Enum()
-	
+
 	// Configure client with proper logging
 	clientLogger := waLog.Stdout("WhatsApp-"+user, "INFO", true)
 	client := whatsmeow.NewClient(deviceStore, clientLogger)
@@ -148,7 +148,7 @@ func restoreSession(user string) (*Session, error) {
 		if appLogger != nil {
 			appLogger.Printf("Device is registered for user %s, attempting to connect", user)
 		}
-		
+
 		// Try to connect with retry logic for transient errors
 		err = connectWithRetry(client, user)
 		if err == nil {
@@ -172,7 +172,7 @@ func restoreSession(user string) (*Session, error) {
 func connectWithRetry(client *whatsmeow.Client, user string) error {
 	var err error
 	maxRetries := 3
-	
+
 	for i := 0; i < maxRetries; i++ {
 		// If client is already connected, disconnect first to avoid "already connected" errors
 		if client.IsConnected() {
@@ -182,16 +182,16 @@ func connectWithRetry(client *whatsmeow.Client, user string) error {
 			client.Disconnect()
 			time.Sleep(500 * time.Millisecond)
 		}
-		
+
 		err = client.Connect()
 		if err == nil {
 			return nil // Successfully connected
 		}
-		
+
 		if strings.Contains(err.Error(), "websocket is already connected") {
 			// Special handling for this common error
 			if appLogger != nil {
-				appLogger.Printf("Got 'already connected' error for user %s, trying again after disconnect (attempt %d/%d)", 
+				appLogger.Printf("Got 'already connected' error for user %s, trying again after disconnect (attempt %d/%d)",
 					user, i+1, maxRetries)
 			}
 			client.Disconnect()
@@ -199,13 +199,13 @@ func connectWithRetry(client *whatsmeow.Client, user string) error {
 		} else {
 			// For other errors, try again with shorter wait
 			if appLogger != nil {
-				appLogger.Printf("Connection error for user %s: %v (attempt %d/%d)", 
+				appLogger.Printf("Connection error for user %s: %v (attempt %d/%d)",
 					user, err, i+1, maxRetries)
 			}
 			time.Sleep(500 * time.Millisecond)
 		}
 	}
-	
+
 	return err // Return the last error
 }
 
@@ -239,7 +239,7 @@ func findSessionByUser(user string) (*Session, bool) {
 
 func main() {
 	var err error
-	
+
 	// Set up logging
 	appLogger, err = setupLogging()
 	if err != nil {
@@ -247,9 +247,9 @@ func main() {
 		// Continue with console logging only
 		appLogger = log.New(os.Stdout, "", log.LstdFlags|log.Lshortfile)
 	}
-	
+
 	appLogger.Println("Starting WhatsApp API service")
-	
+
 	// Set Gin to release mode in production
 	// gin.SetMode(gin.ReleaseMode)
 
@@ -269,7 +269,7 @@ func main() {
 			if !file.IsDir() && len(file.Name()) > 3 && file.Name()[len(file.Name())-3:] == ".db" {
 				user := file.Name()[:len(file.Name())-3] // Remove .db extension
 				appLogger.Printf("Found database for user: %s", user)
-				
+
 				if sess, err := restoreSession(user); err == nil {
 					sessionsLock.Lock()
 					sessions[user] = sess
@@ -317,16 +317,16 @@ func main() {
 	// Health check endpoint with detailed status
 	r.GET("/health", func(c *gin.Context) {
 		uptime := time.Since(startTime).String()
-		
+
 		// Use a try-lock approach to avoid deadlock during session initialization
 		// If we can't acquire the lock within a short time, proceed with partial data
 		var sessionCount, activeCount int
 		lockChan := make(chan struct{})
-		
+
 		go func() {
 			sessionsLock.RLock()
 			defer sessionsLock.RUnlock()
-			
+
 			sessionCount = len(sessions)
 			for _, sess := range sessions {
 				if sess.IsLoggedIn {
@@ -335,7 +335,7 @@ func main() {
 			}
 			close(lockChan)
 		}()
-		
+
 		// Wait for the lock with timeout
 		select {
 		case <-lockChan:
@@ -344,33 +344,33 @@ func main() {
 			// Timeout - proceed with health check anyway
 			appLogger.Printf("Health check timed out waiting for sessions lock")
 		}
-		
+
 		// Log health check access for debugging
 		appLogger.Printf("Health check requested from %s", c.ClientIP())
-		
+
 		// Always return 200 OK status
 		c.JSON(http.StatusOK, gin.H{
-			"status":           "ok",
-			"uptime":           uptime,
-			"total_sessions":   sessionCount,
-			"active_sessions":  activeCount,
-			"timestamp":        time.Now().Format(time.RFC3339),
+			"status":          "ok",
+			"uptime":          uptime,
+			"total_sessions":  sessionCount,
+			"active_sessions": activeCount,
+			"timestamp":       time.Now().Format(time.RFC3339),
 		})
 	})
 
 	// Also add a /health/ endpoint with trailing slash to handle both versions
 	r.GET("/health/", func(c *gin.Context) {
 		uptime := time.Since(startTime).String()
-		
+
 		// Use a try-lock approach to avoid deadlock during session initialization
 		// If we can't acquire the lock within a short time, proceed with partial data
 		var sessionCount, activeCount int
 		lockChan := make(chan struct{})
-		
+
 		go func() {
 			sessionsLock.RLock()
 			defer sessionsLock.RUnlock()
-			
+
 			sessionCount = len(sessions)
 			for _, sess := range sessions {
 				if sess.IsLoggedIn {
@@ -379,7 +379,7 @@ func main() {
 			}
 			close(lockChan)
 		}()
-		
+
 		// Wait for the lock with timeout
 		select {
 		case <-lockChan:
@@ -388,23 +388,23 @@ func main() {
 			// Timeout - proceed with health check anyway
 			appLogger.Printf("Health check (trailing slash) timed out waiting for sessions lock")
 		}
-		
+
 		// Log health check access for debugging
 		appLogger.Printf("Health check (with trailing slash) requested from %s", c.ClientIP())
-		
+
 		c.JSON(http.StatusOK, gin.H{
-			"status":           "ok",
-			"uptime":           uptime,
-			"total_sessions":   sessionCount,
-			"active_sessions":  activeCount,
-			"timestamp":        time.Now().Format(time.RFC3339),
+			"status":          "ok",
+			"uptime":          uptime,
+			"total_sessions":  sessionCount,
+			"active_sessions": activeCount,
+			"timestamp":       time.Now().Format(time.RFC3339),
 		})
 	})
 
 	r.POST("/wa/add", handleAddSession)
 	r.GET("/wa/qr-image", handleQRImage)
 	r.POST("/wa/status", handleStatus)
-	r.GET("/wa/status", handleStatus)  // Add GET method for status
+	r.GET("/wa/status", handleStatus) // Add GET method for status
 	r.POST("/wa/restart", handleRestart)
 	r.POST("/wa/logout", handleLogout)
 
@@ -429,14 +429,14 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 	appLogger.Println("🚫 Shutting down server...")
-	
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	
+
 	if err := srv.Shutdown(ctx); err != nil {
 		appLogger.Printf("Server forced to shutdown: %v\n", err)
 	}
-	
+
 	appLogger.Println("Server exited")
 }
 
@@ -472,31 +472,23 @@ func handleSendMessage(c *gin.Context) {
 		Server: "s.whatsapp.net",
 	}
 
-	// Check if number exists on WhatsApp
-	resp, err := sess.Client.IsOnWhatsApp([]string{req.PhoneNumber})
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check number: " + err.Error()})
-		return
-	}
-	if len(resp) == 0 || !resp[0].IsIn {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "The phone number is not registered on WhatsApp"})
-		return
-	}
-
 	// Create message and send
 	msg := &waProto.Message{
 		Conversation: proto.String(req.Message),
 	}
 
 	opts := whatsmeow.SendRequestExtra{
-		ID: types.MessageID(fmt.Sprintf("%d", time.Now().UnixNano())),
+		ID: whatsmeow.GenerateMessageID(),
 	}
 
-	_, err = sess.Client.SendMessage(context.Background(), recipient, msg, opts)
+	_, err := sess.Client.SendMessage(context.Background(), recipient, msg, opts)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send message: " + err.Error()})
 		return
 	}
+
+	// Log successful message send
+	appLogger.Printf("Message sent successfully to %s from user %s", recipient.String(), req.User)
 
 	c.JSON(http.StatusOK, gin.H{"msg": "Message sent successfully"})
 }
@@ -566,17 +558,6 @@ func sendMediaHandler(c *gin.Context, mediaType string) {
 		}
 	}
 
-	// Check if number exists on WhatsApp
-	resp, err := sess.Client.IsOnWhatsApp([]string{req.PhoneNumber})
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check number: " + err.Error()})
-		return
-	}
-	if len(resp) == 0 || !resp[0].IsIn {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "The phone number is not registered on WhatsApp"})
-		return
-	}
-
 	recipient := types.JID{
 		User:   req.PhoneNumber,
 		Server: "s.whatsapp.net",
@@ -600,18 +581,18 @@ func sendMediaHandler(c *gin.Context, mediaType string) {
 			return
 		}
 		defer httpResp.Body.Close()
-		
+
 		if httpResp.StatusCode != http.StatusOK {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to download media, status: " + httpResp.Status})
 			return
 		}
-		
+
 		media, err = io.ReadAll(httpResp.Body)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read media from URL: " + err.Error()})
 			return
 		}
-		
+
 		mimeType = httpResp.Header.Get("Content-Type")
 		if mimeType == "" {
 			mimeType = http.DetectContentType(media)
@@ -819,9 +800,9 @@ func handleRestart(c *gin.Context) {
 	isLoggedIn := sess.IsLoggedIn
 	isConnected := sess.Client.IsConnected()
 
-	appLogger.Printf("Session successfully reconnected for user: %s (logged_in=%v, connected=%v)", 
+	appLogger.Printf("Session successfully reconnected for user: %s (logged_in=%v, connected=%v)",
 		user, isLoggedIn, isConnected)
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"msg": "Session restored and connected successfully",
 		"status": map[string]interface{}{
@@ -849,9 +830,9 @@ func handleStatus(c *gin.Context) {
 	// Get connection details
 	isLoggedIn := sess.IsLoggedIn
 	isConnected := sess.Client.IsConnected()
-	
+
 	// Log the status check
-	appLogger.Printf("Status check for user %s: logged_in=%v, connected=%v", 
+	appLogger.Printf("Status check for user %s: logged_in=%v, connected=%v",
 		user, isLoggedIn, isConnected)
 
 	// Return detailed status
@@ -877,7 +858,7 @@ func handleAddSession(c *gin.Context) {
 	os.MkdirAll("data", 0755)
 
 	dbPath := "data/" + req.User + ".db"
-	
+
 	// Initialize the database connection
 	dbLog := waLog.Stdout("Database", "INFO", true)
 	container, err := sqlstore.New("sqlite3", "file:"+dbPath+"?_foreign_keys=on", dbLog)
