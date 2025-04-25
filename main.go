@@ -23,6 +23,7 @@ import (
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
 	"go.mau.fi/whatsmeow/proto/waCompanionReg"
+	"go.mau.fi/whatsmeow/proto/waE2E"
 	"go.mau.fi/whatsmeow/store"
 	"go.mau.fi/whatsmeow/store/sqlstore"
 	"go.mau.fi/whatsmeow/types"
@@ -660,11 +661,11 @@ func sendMediaHandler(c *gin.Context, mediaType string) {
 		return
 	}
 
-	var msg waProto.Message
+	var msg waE2E.Message
 	switch mediaType {
 	case "image":
-		msg = waProto.Message{
-			ImageMessage: &waProto.ImageMessage{
+		msg = waE2E.Message{
+			ImageMessage: &waE2E.ImageMessage{
 				Caption:       proto.String(req.Caption),
 				URL:           proto.String(uploaded.URL),
 				DirectPath:    proto.String(uploaded.DirectPath),
@@ -676,8 +677,8 @@ func sendMediaHandler(c *gin.Context, mediaType string) {
 			},
 		}
 	case "video":
-		msg = waProto.Message{
-			VideoMessage: &waProto.VideoMessage{
+		msg = waE2E.Message{
+			VideoMessage: &waE2E.VideoMessage{
 				Caption:       proto.String(req.Caption),
 				URL:           proto.String(uploaded.URL),
 				DirectPath:    proto.String(uploaded.DirectPath),
@@ -689,8 +690,8 @@ func sendMediaHandler(c *gin.Context, mediaType string) {
 			},
 		}
 	case "file":
-		msg = waProto.Message{
-			DocumentMessage: &waProto.DocumentMessage{
+		msg = waE2E.Message{
+			DocumentMessage: &waE2E.DocumentMessage{
 				Caption:       proto.String(req.Caption),
 				URL:           proto.String(uploaded.URL),
 				DirectPath:    proto.String(uploaded.DirectPath),
