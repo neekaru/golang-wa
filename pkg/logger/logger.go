@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"time"
 )
 
 // Global variable to track the rotating writer for proper cleanup
@@ -20,7 +19,7 @@ func SetupLogging() (*log.Logger, error) {
 		return nil, fmt.Errorf("failed to create logs directory: %v", err)
 	}
 
-	// Create a daily rotating writer
+	// Create a daily rotating writer with memory optimization
 	fileWriter, err := NewDailyRotatingWriter(logDir, "whatsapp-api-%s.log")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create log writer: %v", err)
@@ -30,17 +29,18 @@ func SetupLogging() (*log.Logger, error) {
 	activeRotatingWriter = fileWriter
 
 	// Create multi-writer to log to both file and console
+	// This avoids copying the data twice by writing to both outputs in sequence
 	multiWriter := io.MultiWriter(os.Stdout, fileWriter)
+
+	// Create a logger with the multi-writer
+	// Using LstdFlags|log.Lshortfile provides useful context without excessive overhead
 	logger := log.New(multiWriter, "", log.LstdFlags|log.Lshortfile)
 
-	// Get today's date for the initial log message
-	today := time.Now().Format("2006-01-02")
-	logFilePath := filepath.Join(logDir, fmt.Sprintf("whatsapp-api-%s.log", today))
+	// Get current log file path
+	logFilePath := filepath.Join(logDir, fmt.Sprintf("whatsapp-api-%s.log", fileWriter.CurrentDate))
 
+	// Log initialization - this will go to both console and file
 	logger.Printf("Logging initialized to %s", logFilePath)
-
-	// Print log location for easier access
-	fmt.Printf("Logs are being written to: %s\n", logFilePath)
 
 	return logger, nil
 }
