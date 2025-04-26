@@ -6,6 +6,8 @@ services:
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
+    environment:
+      - TZ=UTC  # Set timezone for consistent log rotation
     networks:
       - whatsapp-network
     labels:

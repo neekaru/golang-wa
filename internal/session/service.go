@@ -69,7 +69,7 @@ func (s *Service) RestoreSession(user string) (*app.Session, error) {
 			s.app.Logger.Printf("User %s logged out from WhatsApp", user)
 			session.IsLoggedIn = false
 		case *events.PushName:
-			s.app.Logger.Printf("User %s push name updated: %s", user, e)
+			s.app.Logger.Printf("User %s push name updated: %v", user, e)
 		case *events.StreamError:
 			s.app.Logger.Printf("User %s stream error: %v", user, e)
 		case *events.QR:

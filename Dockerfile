@@ -25,6 +25,10 @@ RUN mkdir -p /var/log/supervisor /app/data /app/logs && \
     chmod +x /app/bot && \
     chmod -R 755 /app/data /app/logs
 
+# Add a daily log rotation check to ensure logs are created daily
+# This is a fallback in case the application's internal log rotation fails
+RUN echo '0 0 * * * find /app/logs -name "whatsapp-api-*.log" -mtime +7 -delete' > /etc/crontabs/root
+
 # Only exposing 8080 as Caddy will handle port 80
 EXPOSE 8080
 

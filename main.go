@@ -54,12 +54,18 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
+	// Log shutdown message before closing
+	appLogger.Println("Shutting down server gracefully...")
+
 	if err := srv.Shutdown(ctx); err != nil {
 		appLogger.Fatalf("Server shutdown failed: %v", err)
 	}
 
 	// Close the logger to ensure all logs are flushed
+	appLogger.Println("Closing logger and flushing logs...")
 	if err := logger.CloseLogger(); err != nil {
 		fmt.Printf("Error closing logger: %v\n", err)
 	}
+
+	fmt.Println("Server shutdown complete")
 }

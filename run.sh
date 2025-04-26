@@ -7,6 +7,30 @@ RED='\033[0;31m'
 YELLOW='\033[0;33m'
 NC='\033[0m' # No Color
 
+# Log function for consistent logging
+log() {
+    local level=$1
+    local message=$2
+    local color=$BLUE
+
+    case "$level" in
+        "INFO")
+            color=$BLUE
+            ;;
+        "SUCCESS")
+            color=$GREEN
+            ;;
+        "WARNING")
+            color=$YELLOW
+            ;;
+        "ERROR")
+            color=$RED
+            ;;
+    esac
+
+    echo -e "${color}[$level] $message${NC}"
+}
+
 # Print header
 print_header() {
     echo -e "${BLUE}================================================${NC}"
@@ -36,6 +60,7 @@ print_usage() {
     echo -e "  ${GREEN}init-dirs${NC}  - Create data and logs directories"
     echo -e "  ${GREEN}app-logs${NC}   - View the WhatsApp application logs"
     echo -e "  ${GREEN}app-logs <user>${NC} - Filter logs for a specific user"
+    echo -e "  ${GREEN}reset-images${NC} - Stop and remove all containers, images, and prune Docker resources"
     echo ""
 }
 
@@ -50,7 +75,7 @@ check_docker() {
 # Initialize data and logs directories
 initialize_directories() {
     echo -e "${BLUE}Creating necessary directories...${NC}"
-    
+
     # Create data directory if it doesn't exist
     if [ ! -d "data" ]; then
         mkdir -p data
@@ -58,7 +83,7 @@ initialize_directories() {
     else
         echo -e "${GREEN}Data directory already exists${NC}"
     fi
-    
+
     # Create logs directory if it doesn't exist
     if [ ! -d "logs" ]; then
         mkdir -p logs
@@ -66,10 +91,10 @@ initialize_directories() {
     else
         echo -e "${GREEN}Logs directory already exists${NC}"
     fi
-    
+
     # Ensure proper permissions
     chmod -R 755 data logs
-    
+
     echo -e "${GREEN}Directories initialized successfully${NC}"
 }
 
@@ -77,13 +102,13 @@ initialize_directories() {
 start_containers() {
     # Ensure required directories exist before starting
     initialize_directories
-    
-    echo -e "${BLUE}Starting containers...${NC}"
+
+    log "INFO" "Starting containers..."
     docker compose up -d
     if [ $? -eq 0 ]; then
-        echo -e "${GREEN}Containers started successfully${NC}"
+        log "SUCCESS" "Containers started successfully"
     else
-        echo -e "${RED}Failed to start containers${NC}"
+        log "ERROR" "Failed to start containers"
     fi
 }
 
@@ -113,7 +138,7 @@ restart_containers() {
 rebuild_containers() {
     # Ensure required directories exist before rebuilding
     initialize_directories
-    
+
     echo -e "${BLUE}Rebuilding and starting containers...${NC}"
     docker compose down
     docker compose build --no-cache
@@ -147,14 +172,14 @@ show_logs() {
 format_caddyfile() {
     echo -e "${BLUE}Formatting Caddyfile...${NC}"
     docker run --rm -v "$(pwd)/Caddyfile:/etc/caddy/Caddyfile" caddy:2.7-alpine caddy fmt --overwrite /etc/caddy/Caddyfile
-    
+
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}Caddyfile formatted successfully${NC}"
-        
+
         # Restart Caddy to apply changes
         echo -e "${BLUE}Restarting Caddy container...${NC}"
         docker compose restart caddy
-        
+
         if [ $? -eq 0 ]; then
             echo -e "${GREEN}Caddy container restarted successfully${NC}"
         else
@@ -175,13 +200,13 @@ show_status() {
 check_health() {
     echo -e "${BLUE}Checking API health status...${NC}"
     response=$(curl -s http://localhost:8080/)
-    
+
     if [ $? -eq 0 ]; then
         status=$(echo $response | jq -r '.status')
         uptime=$(echo $response | jq -r '.uptime')
         session_count=$(echo $response | jq -r '.session_count')
         version=$(echo $response | jq -r '.version')
-        
+
         echo ""
         echo -e "Status: ${GREEN}$status${NC}"
         echo -e "Uptime: ${GREEN}$uptime${NC}"
@@ -196,14 +221,14 @@ check_health() {
 check_health_detailed() {
     echo -e "${BLUE}Checking detailed API health status...${NC}"
     response=$(curl -s http://localhost:8080/health)
-    
+
     if [ $? -eq 0 ]; then
         status=$(echo $response | jq -r '.status')
         uptime=$(echo $response | jq -r '.uptime')
         total_sessions=$(echo $response | jq -r '.total_sessions')
         active_sessions=$(echo $response | jq -r '.active_sessions')
         timestamp=$(echo $response | jq -r '.timestamp')
-        
+
         echo ""
         echo -e "Status: ${GREEN}$status${NC}"
         echo -e "Uptime: ${GREEN}$uptime${NC}"
@@ -218,29 +243,29 @@ check_health_detailed() {
 # Check WhatsApp session status
 check_wa_status() {
     local user=$1
-    
+
     if [ -z "$user" ]; then
         echo -e "${RED}Error: User parameter is required${NC}"
         return 1
     fi
-    
+
     echo -e "${BLUE}Checking WhatsApp status for user $user...${NC}"
     response=$(curl -s "http://localhost:8080/wa/status?user=$user")
-    
+
     if [ $? -eq 0 ]; then
         user=$(echo $response | jq -r '.user')
         logged_in=$(echo $response | jq -r '.logged_in')
         connected=$(echo $response | jq -r '.connected')
-        
+
         echo ""
         echo -e "User: ${GREEN}$user${NC}"
-        
+
         if [ "$logged_in" = "true" ]; then
             echo -e "Logged In: ${GREEN}Yes${NC}"
         else
             echo -e "Logged In: ${YELLOW}No${NC}"
         fi
-        
+
         if [ "$connected" = "true" ]; then
             echo -e "Connected: ${GREEN}Yes${NC}"
         else
@@ -254,15 +279,15 @@ check_wa_status() {
 # Restart WhatsApp session
 restart_wa_session() {
     local user=$1
-    
+
     if [ -z "$user" ]; then
         echo -e "${RED}Error: User parameter is required${NC}"
         return 1
     fi
-    
+
     echo -e "${BLUE}Restarting WhatsApp session for user $user...${NC}"
     response=$(curl -s -X POST "http://localhost:8080/wa/restart?user=$user")
-    
+
     if [ $? -eq 0 ]; then
         msg=$(echo $response | jq -r '.msg')
         echo -e "Session restart result: ${GREEN}$msg${NC}"
@@ -274,38 +299,67 @@ restart_wa_session() {
 # View WhatsApp application logs
 view_app_logs() {
     local user=$1
-    
-    echo -e "${BLUE}Checking WhatsApp application logs...${NC}"
-    
+
+    log "INFO" "Checking WhatsApp application logs..."
+
     # Check if logs directory exists
     if [ ! -d "logs" ]; then
-        echo -e "${YELLOW}Logs directory not found. Creating it now...${NC}"
+        log "WARNING" "Logs directory not found. Creating it now..."
         mkdir -p logs
-        echo -e "${YELLOW}No log files found yet. Start the application first.${NC}"
+        log "WARNING" "No log files found yet. Start the application first."
         return
     fi
-    
+
     # Get log files
     log_files=$(find logs -name "whatsapp-api-*.log" | sort -r)
-    
+
     if [ -z "$log_files" ]; then
-        echo -e "${YELLOW}No log files found in the logs directory${NC}"
+        log "WARNING" "No log files found in the logs directory"
         return
     fi
-    
+
     # Get the most recent log file
     latest_log=$(echo "$log_files" | head -n 1)
-    
+
     echo -e "Viewing latest log file: ${GREEN}$(basename $latest_log)${NC}"
-    
+
     if [ -z "$user" ]; then
         # Show the entire log file
         tail -n 100 -f "$latest_log"
     else
         # Filter for a specific user
-        echo -e "Filtering logs for user: ${BLUE}$user${NC}"
+        log "INFO" "Filtering logs for user: $user"
         tail -f "$latest_log" | grep "$user"
     fi
+}
+
+# Reset Docker images and containers
+reset_images() {
+    log "INFO" "This will stop and remove ALL Docker containers, images, and volumes."
+    log "WARNING" "This is a destructive operation and cannot be undone."
+
+    read -p "Are you sure you want to continue? (y/N): " confirm
+    if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
+        log "INFO" "Operation cancelled."
+        return
+    fi
+
+    # Stop and remove all containers
+    log "INFO" "Stopping and removing all containers..."
+    docker stop $(docker ps -a -q) >/dev/null 2>&1 || true
+    docker rm $(docker ps -a -q) >/dev/null 2>&1 || true
+
+    # Remove all images
+    log "INFO" "Removing all Docker images..."
+    docker rmi $(docker images -a -q) >/dev/null 2>&1 || true
+
+    # Prune everything
+    log "INFO" "Pruning all Docker resources..."
+    docker system prune -a -f --volumes
+    docker builder prune -a -f
+
+    log "SUCCESS" "Docker environment has been reset."
+    log "INFO" "You can now rebuild the application with './run.sh rebuild'"
 }
 
 # Main function
@@ -358,8 +412,11 @@ main() {
         app-logs)
             view_app_logs "$2"
             ;;
+        reset-images)
+            reset_images
+            ;;
         *)
-            echo -e "${RED}Unknown command: $1${NC}"
+            log "ERROR" "Unknown command: $1"
             print_usage
             exit 1
             ;;
@@ -367,4 +424,4 @@ main() {
 }
 
 # Run main function
-main "$@" 
+main "$@"

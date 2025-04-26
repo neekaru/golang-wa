@@ -127,7 +127,7 @@ func (h *Handlers) RestartHandler(c *gin.Context) {
 				h.app.Logger.Printf("Failed to connect after retry for user %s: %v", user, err)
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "Failed to connect after retry: " + err.Error(),
-					"status": map[string]interface{}{
+					"status": map[string]any{
 						"logged_in": sess.IsLoggedIn,
 						"connected": sess.Client.IsConnected(),
 						"user":      user,
@@ -139,7 +139,7 @@ func (h *Handlers) RestartHandler(c *gin.Context) {
 			h.app.Logger.Printf("Failed to connect for user %s: %v", user, err)
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "Failed to connect restored session: " + err.Error(),
-				"status": map[string]interface{}{
+				"status": map[string]any{
 					"logged_in": sess.IsLoggedIn,
 					"connected": sess.Client.IsConnected(),
 					"user":      user,
@@ -158,7 +158,7 @@ func (h *Handlers) RestartHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"msg": "Session restored and connected successfully",
-		"status": map[string]interface{}{
+		"status": map[string]any{
 			"logged_in": isLoggedIn,
 			"connected": isConnected,
 			"user":      user,
