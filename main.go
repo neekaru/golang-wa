@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -55,5 +56,10 @@ func main() {
 
 	if err := srv.Shutdown(ctx); err != nil {
 		appLogger.Fatalf("Server shutdown failed: %v", err)
+	}
+
+	// Close the logger to ensure all logs are flushed
+	if err := logger.CloseLogger(); err != nil {
+		fmt.Printf("Error closing logger: %v\n", err)
 	}
 }
