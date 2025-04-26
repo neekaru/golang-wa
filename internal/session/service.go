@@ -168,13 +168,13 @@ func (s *Service) AddSession(user string) (*app.Session, error) {
 	dbLog := waLog.Stdout("Database", "INFO", true)
 	container, err := sqlstore.New("sqlite3", "file:"+dbPath+"?_foreign_keys=on", dbLog)
 	if err != nil {
-		return nil, fmt.Errorf("DB error: %v", err)
+		return nil, fmt.Errorf("db error: %v", err)
 	}
 
 	// Get the device store from the database
 	deviceStore, err := container.GetFirstDevice()
 	if err != nil {
-		return nil, fmt.Errorf("Device error: %v", err)
+		return nil, fmt.Errorf("device error: %v", err)
 	}
 
 	// Create the client, but don't connect yet

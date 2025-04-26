@@ -34,7 +34,7 @@ require (
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/gin-gonic/gin v1.10.0
-	github.com/golang/protobuf v1.5.0
+	github.com/golang/protobuf v1.5.4
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
