@@ -21,7 +21,27 @@ func NewHandlers(app *app.App) *Handlers {
 // RootHandler handles the root endpoint for Docker health checks
 func (h *Handlers) RootHandler(c *gin.Context) {
 	uptime := time.Since(h.app.StartTime).String()
-	sessionCount := len(h.app.Sessions)
+
+	// Use a try-lock approach to avoid deadlock
+	var sessionCount int
+	lockChan := make(chan struct{})
+
+	go func() {
+		h.app.SessionsLock.RLock()
+		sessionCount = len(h.app.Sessions)
+		h.app.SessionsLock.RUnlock()
+		close(lockChan)
+	}()
+
+	// Wait for the lock with timeout
+	select {
+	case <-lockChan:
+		// Lock acquired and data collected
+	case <-time.After(500 * time.Millisecond):
+		// Timeout - proceed with health check anyway
+		h.app.Logger.Printf("Root health check timed out waiting for sessions lock")
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"status":        "ok",
 		"uptime":        uptime,

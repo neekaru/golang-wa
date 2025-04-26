@@ -1,9 +1,11 @@
 package session
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/neekaru/whatsappgo-bot/internal/app"
@@ -14,6 +16,31 @@ import (
 	"go.mau.fi/whatsmeow/types/events"
 	waLog "go.mau.fi/whatsmeow/util/log"
 )
+
+// KeyedMutex is a string-keyed mutex for locking operations on specific keys
+type KeyedMutex struct {
+	mutexes sync.Map
+}
+
+// Lock locks the mutex for the given key
+func (m *KeyedMutex) Lock(key string) {
+	value, _ := m.mutexes.LoadOrStore(key, &sync.Mutex{})
+	mtx := value.(*sync.Mutex)
+	mtx.Lock()
+}
+
+// Unlock unlocks the mutex for the given key
+func (m *KeyedMutex) Unlock(key string) {
+	value, ok := m.mutexes.Load(key)
+	if !ok {
+		panic(fmt.Sprintf("unlock of unlocked mutex for key %s", key))
+	}
+	mtx := value.(*sync.Mutex)
+	mtx.Unlock()
+}
+
+// Global mutex for session restoration to prevent concurrent restoration of the same session
+var sessionRestorationMutex = &KeyedMutex{}
 
 // Service handles session-related business logic
 type Service struct {
@@ -29,19 +56,79 @@ func NewService(app *app.App) *Service {
 func (s *Service) RestoreSession(user string) (*app.Session, error) {
 	dbPath := "data/" + user + ".db"
 
+	// Create a context with timeout to prevent indefinite blocking
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
 	// Create a logger specifically for this database connection
 	dbLogger := waLog.Stdout("Database-"+user, "INFO", true)
 	s.app.Logger.Printf("Creating/restoring session for user: %s at %s", user, dbPath)
 
-	container, err := sqlstore.New("sqlite3", "file:"+dbPath+"?_foreign_keys=on", dbLogger)
+	// Use a channel to handle the database operation with timeout
+	type dbResult struct {
+		container *sqlstore.Container
+		err       error
+	}
+
+	resultChan := make(chan dbResult, 1)
+
+	go func() {
+		// Try to open the database with compatibility for old format
+		container, err := sqlstore.New("sqlite3", "file:"+dbPath+"?_foreign_keys=on", dbLogger)
+		resultChan <- dbResult{container, err}
+	}()
+
+	// Wait for either the result or timeout
+	var container *sqlstore.Container
+	var err error
+
+	select {
+	case result := <-resultChan:
+		container = result.container
+		err = result.err
+	case <-ctx.Done():
+		return nil, fmt.Errorf("database operation timed out: %v", ctx.Err())
+	}
+
 	if err != nil {
 		s.app.Logger.Printf("Database error for user %s: %v", user, err)
 		return nil, fmt.Errorf("database error: %v", err)
 	}
 
-	deviceStore, err := container.GetFirstDevice()
+	// Get device with timeout
+	deviceChan := make(chan struct {
+		device *store.Device
+		err    error
+	}, 1)
+
+	go func() {
+		deviceStore, err := container.GetFirstDevice()
+		deviceChan <- struct {
+			device *store.Device
+			err    error
+		}{deviceStore, err}
+	}()
+
+	var deviceStore *store.Device
+
+	select {
+	case result := <-deviceChan:
+		deviceStore = result.device
+		err = result.err
+	case <-ctx.Done():
+		// Close the container before returning
+		if container != nil {
+			container.Close()
+		}
+		return nil, fmt.Errorf("device operation timed out: %v", ctx.Err())
+	}
+
 	if err != nil {
 		s.app.Logger.Printf("Device error for user %s: %v", user, err)
+		// Close the container before returning
+		if container != nil {
+			container.Close()
+		}
 		return nil, fmt.Errorf("device error: %v", err)
 	}
 
@@ -135,25 +222,54 @@ func (s *Service) ConnectWithRetry(client *whatsmeow.Client, user string) error 
 
 // FindSessionByUser finds a session by user identifier
 func (s *Service) FindSessionByUser(user string) (*app.Session, bool) {
-	s.app.SessionsLock.RLock()
-	defer s.app.SessionsLock.RUnlock()
+	// Use a mutex to prevent concurrent restoration of the same session
+	// This prevents the "Creating/restoring session for user: X" happening multiple times
+	sessionRestorationMutex.Lock(user)
+	defer sessionRestorationMutex.Unlock(user)
 
-	// First check in-memory sessions
+	// First check in-memory sessions with read lock only
+	s.app.SessionsLock.RLock()
 	for _, sess := range s.app.Sessions {
 		if sess.User == user {
+			// Found in memory, return immediately
+			s.app.SessionsLock.RUnlock()
 			return sess, true
 		}
 	}
+	// Release read lock before database operations
+	s.app.SessionsLock.RUnlock()
+
+	// Check one more time with a write lock to ensure atomicity
+	s.app.SessionsLock.Lock()
+	if existingSession, exists := s.app.Sessions[user]; exists {
+		s.app.SessionsLock.Unlock()
+		return existingSession, true
+	}
+	s.app.SessionsLock.Unlock()
 
 	// If not found in memory, try to restore from database
+	s.app.Logger.Printf("Session not found in memory, restoring from database for user: %s", user)
 	sess, err := s.RestoreSession(user)
 	if err != nil {
 		s.app.Logger.Printf("Failed to restore session for user %s: %v", user, err)
 		return nil, false
 	}
 
-	// Add restored session to in-memory map
+	// Add restored session to in-memory map with a separate write lock
 	s.app.SessionsLock.Lock()
+	// Final check if another thread somehow added the session while we were restoring
+	if existingSession, exists := s.app.Sessions[user]; exists {
+		s.app.SessionsLock.Unlock()
+		// Close the resources we just created since we won't be using them
+		if sess.Container != nil {
+			sess.Container.Close()
+		}
+		if sess.Client != nil && sess.Client.IsConnected() {
+			sess.Client.Disconnect()
+		}
+		return existingSession, true
+	}
+	// Add our newly restored session
 	s.app.Sessions[user] = sess
 	s.app.SessionsLock.Unlock()
 
@@ -200,9 +316,8 @@ func (s *Service) AddSession(user string) (*app.Session, error) {
 
 // LogoutSession logs out a session and cleans up resources
 func (s *Service) LogoutSession(user string) error {
-	s.app.SessionsLock.Lock()
-	defer s.app.SessionsLock.Unlock()
-
+	// First find the session with read lock
+	s.app.SessionsLock.RLock()
 	var sessionKey string
 	var sess *app.Session
 
@@ -213,12 +328,14 @@ func (s *Service) LogoutSession(user string) error {
 			break
 		}
 	}
+	s.app.SessionsLock.RUnlock()
 
 	if sess == nil {
 		return fmt.Errorf("no session found for user %s", user)
 	}
 
 	// Step 1: Logout and disconnect client safely
+	// Note: We're not holding any locks here for these potentially slow operations
 	if sess.Client != nil {
 		if err := sess.Client.Logout(); err != nil {
 			s.app.Logger.Printf("Error during logout for %s: %v", user, err)
@@ -244,7 +361,9 @@ func (s *Service) LogoutSession(user string) error {
 	}
 
 	// Step 4: Remove from sessions map
+	s.app.SessionsLock.Lock()
 	delete(s.app.Sessions, sessionKey)
+	s.app.SessionsLock.Unlock()
 
 	return nil
 }
