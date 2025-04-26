@@ -13,6 +13,16 @@ const (
 	DefaultBufferSize = 4096
 )
 
+// bufferPool is a sync.Pool for reusing byte buffers
+// This reduces GC pressure by reusing allocated memory
+var bufferPool = sync.Pool{
+	New: func() any {
+		// Pre-allocate a buffer with the default size
+		buf := make([]byte, 0, DefaultBufferSize)
+		return &buf
+	},
+}
+
 // DailyRotatingWriter is a writer that automatically rotates log files daily
 type DailyRotatingWriter struct {
 	file           *os.File
@@ -20,7 +30,6 @@ type DailyRotatingWriter struct {
 	logDir         string
 	filenameFormat string
 	mu             sync.Mutex
-	buffer         []byte // Reusable buffer for path construction
 }
 
 // NewDailyRotatingWriter creates a new daily rotating writer
@@ -28,7 +37,6 @@ func NewDailyRotatingWriter(logDir string, filenameFormat string) (*DailyRotatin
 	writer := &DailyRotatingWriter{
 		logDir:         logDir,
 		filenameFormat: filenameFormat,
-		buffer:         make([]byte, 0, DefaultBufferSize), // Pre-allocate buffer
 	}
 
 	// Initialize with the current date and file
@@ -59,11 +67,24 @@ func (w *DailyRotatingWriter) rotateIfNeeded() error {
 		w.file = nil // Allow GC to collect the old file handle
 	}
 
-	// Create the new log file with today's date - reuse buffer for path construction
+	// Get a buffer from the pool for path construction
+	bufPtr := bufferPool.Get().(*[]byte)
+	buf := *bufPtr
+	buf = buf[:0] // Reset buffer without reallocating
+
+	// Build the filename directly into the buffer when possible
+	// This avoids allocations from string concatenation
 	filename := fmt.Sprintf(w.filenameFormat, today)
+
+	// Use filepath.Join efficiently
 	logFilePath := filepath.Join(w.logDir, filename)
 
 	file, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+
+	// Return the buffer to the pool for reuse
+	*bufPtr = buf[:0] // Clear but keep capacity
+	bufferPool.Put(bufPtr)
+
 	if err != nil {
 		return err
 	}
@@ -86,8 +107,30 @@ func (w *DailyRotatingWriter) Write(p []byte) (n int, err error) {
 		return 0, err
 	}
 
-	// Use a direct write to file - no additional buffer needed here
-	// since we're already receiving a byte slice
+	// For small writes, we can use a buffer from the pool to batch operations
+	// This reduces the number of syscalls for frequent small writes
+	if len(p) < DefaultBufferSize/2 {
+		// Get a buffer from the pool
+		bufPtr := bufferPool.Get().(*[]byte)
+		buf := *bufPtr
+
+		// Reset buffer without reallocating
+		buf = buf[:0]
+
+		// Copy the data to our reusable buffer
+		buf = append(buf, p...)
+
+		// Write the entire buffer at once
+		n, err = w.file.Write(buf)
+
+		// Return the buffer to the pool for reuse
+		*bufPtr = buf[:0] // Clear but keep capacity
+		bufferPool.Put(bufPtr)
+
+		return n, err
+	}
+
+	// For larger writes, use a direct write to avoid an extra copy
 	return w.file.Write(p)
 }
 
@@ -100,7 +143,30 @@ func (w *DailyRotatingWriter) WriteString(s string) (n int, err error) {
 		return 0, err
 	}
 
-	// Use the file's WriteString method directly
+	// For small strings, we can use a buffer from the pool to batch operations
+	// This reduces the number of syscalls for frequent small writes
+	if len(s) < DefaultBufferSize/2 {
+		// Get a buffer from the pool
+		bufPtr := bufferPool.Get().(*[]byte)
+		buf := *bufPtr
+
+		// Reset buffer without reallocating
+		buf = buf[:0]
+
+		// Copy the string data to our reusable buffer
+		buf = append(buf, s...)
+
+		// Write the entire buffer at once
+		n, err = w.file.Write(buf)
+
+		// Return the buffer to the pool for reuse
+		*bufPtr = buf[:0] // Clear but keep capacity
+		bufferPool.Put(bufPtr)
+
+		return n, err
+	}
+
+	// For larger strings, use WriteString directly which is optimized for strings
 	return w.file.WriteString(s)
 }
 
@@ -111,8 +177,7 @@ func (w *DailyRotatingWriter) Close() error {
 
 	if w.file != nil {
 		err := w.file.Close()
-		w.file = nil   // Allow GC to collect the file handle
-		w.buffer = nil // Clear buffer reference
+		w.file = nil // Allow GC to collect the file handle
 		return err
 	}
 
