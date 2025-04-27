@@ -156,13 +156,23 @@ func (h *Handlers) RestartHandler(c *gin.Context) {
 	h.app.Logger.Printf("Session successfully reconnected for user: %s (logged_in=%v, connected=%v)",
 		user, isLoggedIn, isConnected)
 
+	// Check if QR code is needed
+	needsQR := !isLoggedIn || !isConnected
+
+	// Prepare response message
+	msg := "Session restored and connected successfully"
+	if needsQR {
+		h.app.Logger.Printf("Session needs QR code for user: %s", user)
+		msg = "Session restored but needs QR code. Please request QR code using /wa/qr-image?user=" + user
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"msg": "Session restored and connected successfully",
+		"msg": msg,
 		"status": map[string]any{
 			"logged_in": isLoggedIn,
 			"connected": isConnected,
 			"user":      user,
-			"needs_qr":  !isLoggedIn || !isConnected,
+			"needs_qr":  needsQR,
 		},
 	})
 }
@@ -175,7 +185,38 @@ func (h *Handlers) LogoutHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"msg": "Logout process started"})
+	// Check if the session exists and get its connection status
+	sess, exists := h.service.FindSessionByUser(req.User)
+	if !exists {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Session not found"})
+		return
+	}
+
+	isConnected := false
+	if sess.Client != nil {
+		isConnected = sess.Client.IsConnected()
+	}
+
+	// Provide appropriate feedback based on connection status
+	if isConnected {
+		c.JSON(http.StatusOK, gin.H{
+			"msg": "Logout process started for connected session",
+			"status": map[string]any{
+				"user":      req.User,
+				"connected": true,
+				"logged_in": sess.IsLoggedIn,
+			},
+		})
+	} else {
+		c.JSON(http.StatusOK, gin.H{
+			"msg": "Cleaning up disconnected session",
+			"status": map[string]any{
+				"user":      req.User,
+				"connected": false,
+				"logged_in": sess.IsLoggedIn,
+			},
+		})
+	}
 
 	// Process logout asynchronously to avoid blocking the response
 	go func() {

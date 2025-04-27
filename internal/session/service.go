@@ -398,13 +398,20 @@ func (s *Service) LogoutSession(user string) error {
 	// Step 1: Logout and disconnect client safely
 	// Note: We're not holding any locks here for these potentially slow operations
 	if sess.Client != nil {
-		if err := sess.Client.Logout(); err != nil {
-			s.app.Logger.Printf("Error during logout for %s: %v", user, err)
-			// Continue with cleanup even if logout fails
+		// Only attempt to logout if the client is connected
+		if sess.Client.IsConnected() {
+			if err := sess.Client.Logout(); err != nil {
+				s.app.Logger.Printf("Error during logout for %s: %v", user, err)
+				// Continue with cleanup even if logout fails
+			} else {
+				s.app.Logger.Printf("Successfully logged out %s", user)
+			}
+			// Disconnect after logout attempt
+			sess.Client.Disconnect()
 		} else {
-			s.app.Logger.Printf("Successfully logged out %s", user)
+			s.app.Logger.Printf("Client for %s is not connected, skipping logout request", user)
+			// No need to disconnect as it's already disconnected
 		}
-		sess.Client.Disconnect()
 	}
 
 	// Step 2: Close database connection
