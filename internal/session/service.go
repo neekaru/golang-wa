@@ -13,7 +13,6 @@ import (
 	"go.mau.fi/whatsmeow/proto/waCompanionReg"
 	"go.mau.fi/whatsmeow/store"
 	"go.mau.fi/whatsmeow/store/sqlstore"
-	"go.mau.fi/whatsmeow/types/events"
 	waLog "go.mau.fi/whatsmeow/util/log"
 )
 
@@ -54,6 +53,21 @@ func NewService(app *app.App) *Service {
 
 // RestoreSession restores a session from the database
 func (s *Service) RestoreSession(user string) (*app.Session, error) {
+	// Check if the client already exists in the ClientManager
+	clientManager := s.app.GetClientManager()
+	if clientManager.ClientExists(user) {
+		// Client already exists in the ClientManager, create a legacy Session for it
+		whatsappClient, _ := clientManager.GetClient(user)
+		session := &app.Session{
+			Client:     whatsappClient.WhatsmeowClient,
+			Container:  whatsappClient.Container,
+			User:       user,
+			IsLoggedIn: whatsappClient.IsLoggedIn(),
+		}
+		return session, nil
+	}
+
+	// Client doesn't exist, restore it from the database
 	dbPath := "data/" + user + ".db"
 
 	// Create a context with timeout to prevent indefinite blocking
@@ -137,46 +151,45 @@ func (s *Service) RestoreSession(user string) (*app.Session, error) {
 
 	// Configure client with proper logging
 	clientLogger := waLog.Stdout("WhatsApp-"+user, "INFO", true)
-	client := whatsmeow.NewClient(deviceStore, clientLogger)
+	whatsmeowClient := whatsmeow.NewClient(deviceStore, clientLogger)
 
+	// Add the client to the ClientManager
+	_, err = clientManager.AddClient(user, container, whatsmeowClient)
+	if err != nil {
+		s.app.Logger.Printf("Error adding client to ClientManager: %v", err)
+		// Close the container before returning
+		if container != nil {
+			container.Close()
+		}
+		return nil, fmt.Errorf("error adding client to ClientManager: %v", err)
+	}
+
+	// Create a legacy Session for backward compatibility
 	session := &app.Session{
-		Client:     client,
+		Client:     whatsmeowClient,
 		Container:  container,
 		User:       user,
 		IsLoggedIn: false,
 	}
 
-	// Add connection event handler that properly updates the session state
-	client.AddEventHandler(func(evt interface{}) {
-		switch e := evt.(type) {
-		case *events.Connected:
-			s.app.Logger.Printf("User %s connected to WhatsApp", user)
-			session.IsLoggedIn = true
-		case *events.LoggedOut:
-			s.app.Logger.Printf("User %s logged out from WhatsApp", user)
-			session.IsLoggedIn = false
-		case *events.PushName:
-			s.app.Logger.Printf("User %s push name updated: %v", user, e)
-		case *events.StreamError:
-			s.app.Logger.Printf("User %s stream error: %v", user, e)
-		case *events.QR:
-			s.app.Logger.Printf("User %s received new QR code", user)
-		}
-	})
-
-	// Attempt to restore connection if device is already registered
-	if client.Store.ID != nil {
+	// Attempt to connect if device is already registered
+	if whatsmeowClient.Store.ID != nil {
 		s.app.Logger.Printf("Device is registered for user %s, attempting to connect", user)
 
-		// Try to connect with retry logic for transient errors
-		err = s.ConnectWithRetry(client, user)
-		if err == nil {
-			session.IsLoggedIn = true
-			s.app.Logger.Printf("Successfully connected existing session for user: %s", user)
+		// Get the client from the ClientManager
+		whatsappClient, exists := clientManager.GetClient(user)
+		if !exists {
+			s.app.Logger.Printf("Client not found in ClientManager for user %s", user)
 		} else {
-			s.app.Logger.Printf("Failed to connect existing session for user %s: %v", user, err)
-			// Don't return error here, as we want to return the session anyway
-			// The client can try to reconnect later
+			// Use the ClientManager's client to connect
+			err = whatsappClient.Connect()
+			if err == nil {
+				session.IsLoggedIn = true
+				s.app.Logger.Printf("Successfully connected existing session for user: %s", user)
+			} else {
+				s.app.Logger.Printf("Failed to connect existing session for user %s: %v", user, err)
+				// Don't return error here, as we want to return the session anyway
+			}
 		}
 	} else {
 		s.app.Logger.Printf("Device not yet registered for user %s, QR code needed", user)
@@ -223,9 +236,22 @@ func (s *Service) ConnectWithRetry(client *whatsmeow.Client, user string) error 
 // FindSessionByUser finds a session by user identifier
 func (s *Service) FindSessionByUser(user string) (*app.Session, bool) {
 	// Use a mutex to prevent concurrent restoration of the same session
-	// This prevents the "Creating/restoring session for user: X" happening multiple times
 	sessionRestorationMutex.Lock(user)
 	defer sessionRestorationMutex.Unlock(user)
+
+	// Check if the client exists in the ClientManager
+	clientManager := s.app.GetClientManager()
+	if clientManager.ClientExists(user) {
+		// Client exists in the ClientManager, create a legacy Session for it
+		whatsappClient, _ := clientManager.GetClient(user)
+		session := &app.Session{
+			Client:     whatsappClient.WhatsmeowClient,
+			Container:  whatsappClient.Container,
+			User:       user,
+			IsLoggedIn: whatsappClient.IsLoggedIn(),
+		}
+		return session, true
+	}
 
 	// First check in-memory sessions with read lock only
 	s.app.SessionsLock.RLock()
@@ -278,6 +304,20 @@ func (s *Service) FindSessionByUser(user string) (*app.Session, bool) {
 
 // AddSession creates a new WhatsApp session
 func (s *Service) AddSession(user string) (*app.Session, error) {
+	// Check if the client already exists in the ClientManager
+	clientManager := s.app.GetClientManager()
+	if clientManager.ClientExists(user) {
+		// Client already exists, create a legacy Session for it
+		whatsappClient, _ := clientManager.GetClient(user)
+		session := &app.Session{
+			Client:     whatsappClient.WhatsmeowClient,
+			Container:  whatsappClient.Container,
+			User:       user,
+			IsLoggedIn: whatsappClient.IsLoggedIn(),
+		}
+		return session, nil
+	}
+
 	dbPath := "data/" + user + ".db"
 
 	// Initialize the database connection
@@ -296,17 +336,28 @@ func (s *Service) AddSession(user string) (*app.Session, error) {
 	// Create the client, but don't connect yet
 	store.SetOSInfo("Linux", store.GetWAVersion())
 	store.DeviceProps.PlatformType = waCompanionReg.DeviceProps_CHROME.Enum()
-	client := whatsmeow.NewClient(deviceStore, waLog.Noop)
+	whatsmeowClient := whatsmeow.NewClient(deviceStore, waLog.Noop)
 
-	// Create a new session
+	// Add the client to the ClientManager
+	_, err = clientManager.AddClient(user, container, whatsmeowClient)
+	if err != nil {
+		s.app.Logger.Printf("Error adding client to ClientManager: %v", err)
+		// Close the container before returning
+		if container != nil {
+			container.Close()
+		}
+		return nil, fmt.Errorf("error adding client to ClientManager: %v", err)
+	}
+
+	// Create a legacy Session for backward compatibility
 	session := &app.Session{
-		Client:     client,
+		Client:     whatsmeowClient,
 		Container:  container,
 		User:       user,
 		IsLoggedIn: false,
 	}
 
-	// Add the session to the sessions map
+	// Add the session to the sessions map for backward compatibility
 	s.app.SessionsLock.Lock()
 	s.app.Sessions[user] = session
 	s.app.SessionsLock.Unlock()
@@ -316,6 +367,16 @@ func (s *Service) AddSession(user string) (*app.Session, error) {
 
 // LogoutSession logs out a session and cleans up resources
 func (s *Service) LogoutSession(user string) error {
+	// Check if the client exists in the ClientManager
+	clientManager := s.app.GetClientManager()
+	if clientManager.ClientExists(user) {
+		// Remove the client from the ClientManager
+		err := clientManager.RemoveClient(user)
+		if err != nil {
+			s.app.Logger.Printf("Error removing client from ClientManager: %v", err)
+		}
+	}
+
 	// First find the session with read lock
 	s.app.SessionsLock.RLock()
 	var sessionKey string
