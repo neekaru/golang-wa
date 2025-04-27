@@ -100,11 +100,11 @@ func (m *ClientManager) AddClient(id string, container *sqlstore.Container, what
 	}
 
 	client := &Client{
-		ID:             id,
+		ID:              id,
 		WhatsmeowClient: whatsmeowClient,
-		Container:      container,
-		Status:         StatusDisconnected,
-		manager:        m,
+		Container:       container,
+		Status:          StatusDisconnected,
+		manager:         m,
 	}
 
 	// Set up event handler
@@ -125,10 +125,36 @@ func (m *ClientManager) RemoveClient(id string) error {
 		return fmt.Errorf("client with ID %s not found", id)
 	}
 
-	// Clean up resources
+	// Always try to disconnect first to ensure a clean state
 	if client.WhatsmeowClient.IsConnected() {
+		m.logger.Printf("Disconnecting client %s", id)
 		client.WhatsmeowClient.Disconnect()
 	}
+
+	// Try to connect for a proper logout
+	m.logger.Printf("Attempting to connect client %s for proper logout", id)
+	err := client.Connect()
+
+	// If connected successfully, try to logout
+	if err == nil && client.WhatsmeowClient.IsConnected() {
+		m.logger.Printf("Successfully connected client %s, attempting logout", id)
+
+		// Try to logout, but don't worry if it fails
+		logoutErr := client.WhatsmeowClient.Logout()
+		if logoutErr != nil {
+			m.logger.Printf("Logout error for client %s (this is usually not critical): %v", id, logoutErr)
+		} else {
+			m.logger.Printf("Successfully logged out client %s", id)
+		}
+
+		// Always disconnect after logout attempt
+		client.WhatsmeowClient.Disconnect()
+	} else {
+		// If we couldn't connect, just log it and continue with cleanup
+		m.logger.Printf("Could not connect client %s for proper logout, continuing with cleanup", id)
+	}
+
+	// Clean up resources
 	if client.Container != nil {
 		client.Container.Close()
 	}
@@ -150,13 +176,13 @@ func (m *ClientManager) ClientExists(id string) bool {
 func (m *ClientManager) GetAllClients() map[string]*Client {
 	m.clientsLock.RLock()
 	defer m.clientsLock.RUnlock()
-	
+
 	// Create a copy to avoid race conditions
 	clientsCopy := make(map[string]*Client, len(m.clients))
 	for id, client := range m.clients {
 		clientsCopy[id] = client
 	}
-	
+
 	return clientsCopy
 }
 
@@ -164,7 +190,7 @@ func (m *ClientManager) GetAllClients() map[string]*Client {
 func (m *ClientManager) RegisterObserver(eventType string, observer Observer) {
 	m.observersLock.Lock()
 	defer m.observersLock.Unlock()
-	
+
 	m.observers[eventType] = append(m.observers[eventType], observer)
 	m.logger.Printf("Registered observer for event type %s", eventType)
 }
@@ -173,12 +199,12 @@ func (m *ClientManager) RegisterObserver(eventType string, observer Observer) {
 func (m *ClientManager) UnregisterObserver(eventType string, observer Observer) {
 	m.observersLock.Lock()
 	defer m.observersLock.Unlock()
-	
+
 	observers, exists := m.observers[eventType]
 	if !exists {
 		return
 	}
-	
+
 	// Find and remove the observer
 	for i, obs := range observers {
 		if obs == observer {
@@ -194,11 +220,11 @@ func (m *ClientManager) DispatchEvent(event Event) {
 	m.observersLock.RLock()
 	observers, exists := m.observers[event.GetType()]
 	m.observersLock.RUnlock()
-	
+
 	if !exists || len(observers) == 0 {
 		return
 	}
-	
+
 	// Use worker pool to handle event dispatching
 	m.workerPool <- func() {
 		for _, observer := range observers {
@@ -218,12 +244,12 @@ func (m *ClientManager) ForceGC() {
 func (m *ClientManager) CleanupStaleClients(maxIdleTime time.Duration) {
 	m.clientsLock.Lock()
 	defer m.clientsLock.Unlock()
-	
+
 	now := time.Now()
 	for id, client := range m.clients {
 		if client.Status == StatusDisconnected && now.Sub(client.lastActivityTime) > maxIdleTime {
 			m.logger.Printf("Cleaning up stale client %s", id)
-			
+
 			// Clean up resources
 			if client.WhatsmeowClient.IsConnected() {
 				client.WhatsmeowClient.Disconnect()
@@ -231,7 +257,7 @@ func (m *ClientManager) CleanupStaleClients(maxIdleTime time.Duration) {
 			if client.Container != nil {
 				client.Container.Close()
 			}
-			
+
 			delete(m.clients, id)
 		}
 	}

@@ -209,7 +209,7 @@ func (h *Handlers) LogoutHandler(c *gin.Context) {
 		})
 	} else {
 		c.JSON(http.StatusOK, gin.H{
-			"msg": "Cleaning up disconnected session",
+			"msg": "Session is disconnected. Will attempt to connect before logout.",
 			"status": map[string]any{
 				"user":      req.User,
 				"connected": false,
