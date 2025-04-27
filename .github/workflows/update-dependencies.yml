@@ -22,7 +22,7 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: '1.24'  # Adjust this to match your project's Go version
-          check-latest: true
+          cache: true
 
       - name: Update dependencies
         run: |
@@ -52,7 +52,7 @@ jobs:
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v6
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GH_TOKEN }}
           title: "chore: update Go dependencies"
           body: |
             This PR updates Go dependencies to their latest versions.
