@@ -33,16 +33,6 @@ on:
         required: false
         default: 'latest'
         type: string
-      push_latest:
-        description: 'Also push as latest tag'
-        required: false
-        default: false
-        type: boolean
-
-env:
-  REGISTRY: docker.io
-  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-  IMAGE_NAME: whatsmeow-maiga
 
 jobs:
   build-and-push:
@@ -76,32 +66,26 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Set build tags
-        id: tags
+      - name: Determine build target
+        id: build-target
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            # For manual triggers, use the specified tag
             if [ "${{ github.event.inputs.tag }}" != "latest" ]; then
-              TAGS="${{ env.REGISTRY }}/${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.tag }}"
-              if [ "${{ github.event.inputs.push_latest }}" = "true" ]; then
-                TAGS="$TAGS,${{ env.REGISTRY }}/${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest"
-              fi
+              echo "target=main" >> $GITHUB_OUTPUT
             else
-              TAGS="${{ env.REGISTRY }}/${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest"
+              echo "target=latest" >> $GITHUB_OUTPUT
             fi
           else
-            # For automatic triggers, use the branch name and latest
-            TAGS="${{ env.REGISTRY }}/${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }},${{ env.REGISTRY }}/${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest"
+            echo "target=default" >> $GITHUB_OUTPUT
           fi
-          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
 
       - name: Build and push Docker images
         uses: docker/bake-action@v4
         with:
           files: |
             ./docker-bake.hcl
+          targets: ${{ steps.build-target.outputs.target }}
           push: true
           set: |
-            *.cache-from=type=gha,scope=${{ github.ref_name }}
-            *.cache-to=type=gha,mode=max,scope=${{ github.ref_name }}
-            *.tags=${{ steps.tags.outputs.tags }}
+            *.cache-from=type=gha
+            *.cache-to=type=gha,mode=max
