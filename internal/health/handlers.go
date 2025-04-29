@@ -27,9 +27,26 @@ func (h *Handlers) RootHandler(c *gin.Context) {
 	lockChan := make(chan struct{})
 
 	go func() {
+		// Count sessions from the legacy system
 		h.app.SessionsLock.RLock()
+		legacySessionMap := make(map[string]bool) // Track which users are in legacy sessions
+
 		sessionCount = len(h.app.Sessions)
+		for user := range h.app.Sessions {
+			legacySessionMap[user] = true
+		}
 		h.app.SessionsLock.RUnlock()
+
+		// Also count sessions from the ClientManager
+		clientManager := h.app.GetClientManager()
+		clients := clientManager.GetAllClients()
+		for id := range clients {
+			// Only count clients that aren't already counted in the legacy system
+			if _, exists := legacySessionMap[id]; !exists {
+				sessionCount++ // Increment total session count
+			}
+		}
+
 		close(lockChan)
 	}()
 
@@ -60,15 +77,33 @@ func (h *Handlers) HealthCheckHandler(c *gin.Context) {
 	lockChan := make(chan struct{})
 
 	go func() {
+		// First count sessions from the legacy system
 		h.app.SessionsLock.RLock()
-		defer h.app.SessionsLock.RUnlock()
+		legacySessionMap := make(map[string]bool) // Track which users are in legacy sessions
 
 		sessionCount = len(h.app.Sessions)
-		for _, sess := range h.app.Sessions {
+		for user, sess := range h.app.Sessions {
+			legacySessionMap[user] = true
 			if sess.IsLoggedIn {
 				activeCount++
 			}
 		}
+		h.app.SessionsLock.RUnlock()
+
+		// Also count sessions from the ClientManager
+		clientManager := h.app.GetClientManager()
+		// Use exported methods to get clients
+		clients := clientManager.GetAllClients()
+		for id, client := range clients {
+			// Only count clients that aren't already counted in the legacy system
+			if _, exists := legacySessionMap[id]; !exists {
+				sessionCount++ // Increment total session count
+				if client.IsLoggedIn() {
+					activeCount++
+				}
+			}
+		}
+
 		close(lockChan)
 	}()
 
