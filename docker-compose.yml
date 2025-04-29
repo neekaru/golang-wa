@@ -12,6 +12,11 @@ services:
       - whatsapp-network
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   caddy:
     build:
@@ -38,6 +43,11 @@ services:
       retries: 3
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
 volumes:
   caddy_data:
