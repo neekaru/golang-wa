@@ -12,6 +12,8 @@ services:
       - whatsapp-network
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
+    mem_limit: 512m
+    cpus: "0.5"
     logging:
       driver: "json-file"
       options:
@@ -43,6 +45,8 @@ services:
       retries: 3
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
+    mem_limit: 512m
+    cpus: "0.5"
     logging:
       driver: "json-file"
       options:
