@@ -1,27 +1,51 @@
-name: Docker
+name: Docker Build and Push
 
 on:
+  # Automatic triggers
   push:
     branches: [ "main" ]
     paths:
       - 'main.go'
       - 'pkg/**'
       - 'internal/**'
+      - 'Dockerfile'
+      - 'docker-compose.yml'
+      - 'supervisor.conf'
+      - 'supervisord.yaml'
   pull_request:
     branches: [ "main" ]
     paths:
       - 'main.go'
       - 'pkg/**'
       - 'internal/**'
+      - 'Dockerfile'
+      - 'docker-compose.yml'
+      - 'supervisor.conf'
+      - 'supervisord.yaml'
+  # Schedule for regular builds
+  schedule:
+    - cron: '0 0 * * 0'  # Every Sunday at midnight UTC
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag for the Docker image'
+        required: false
+        default: 'latest'
+        type: string
+      push_latest:
+        description: 'Also push as latest tag'
+        required: false
+        default: false
+        type: boolean
 
 env:
-  BUILDX_NO_DEFAULT_LOAD: true
   REGISTRY: docker.io
   DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
   IMAGE_NAME: whatsmeow-maiga
 
 jobs:
-  build:
+  build-and-push:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -31,7 +55,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@v4
@@ -42,7 +66,6 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
-          version: latest
           driver-opts: |
             image=moby/buildkit:latest
             network=host
@@ -53,6 +76,25 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Set build tags
+        id: tags
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            # For manual triggers, use the specified tag
+            if [ "${{ github.event.inputs.tag }}" != "latest" ]; then
+              TAGS="${{ env.REGISTRY }}/${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.tag }}"
+              if [ "${{ github.event.inputs.push_latest }}" = "true" ]; then
+                TAGS="$TAGS,${{ env.REGISTRY }}/${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest"
+              fi
+            else
+              TAGS="${{ env.REGISTRY }}/${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest"
+            fi
+          else
+            # For automatic triggers, use the branch name and latest
+            TAGS="${{ env.REGISTRY }}/${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }},${{ env.REGISTRY }}/${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest"
+          fi
+          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+
       - name: Build and push Docker images
         uses: docker/bake-action@v4
         with:
@@ -62,3 +104,4 @@ jobs:
           set: |
             *.cache-from=type=gha,scope=${{ github.ref_name }}
             *.cache-to=type=gha,mode=max,scope=${{ github.ref_name }}
+            *.tags=${{ steps.tags.outputs.tags }}
