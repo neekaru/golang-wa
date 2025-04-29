@@ -10,9 +10,11 @@ on:
 jobs:
   update-dependencies:
     runs-on: ubuntu-latest
+    # Update permissions to include necessary scopes
     permissions:
       contents: write
       pull-requests: write
+      actions: write
 
     steps:
       - name: Checkout code
@@ -32,8 +34,8 @@ jobs:
           DATE=$(date +"%Y-%m-%d") || exit 1
           
           # Create a new branch for the updates
-          git config --global user.name 'GitHub Actions'
-          git config --global user.email 'actions@github.com'
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git checkout -b deps/update-$DATE || exit 1
           
           # Update all dependencies
@@ -42,7 +44,7 @@ jobs:
           
           # Check if there are any changes
           if git diff --exit-code go.mod go.sum; then
-            echo "No dependency updates found" || exit 1
+            echo "No dependency updates found"
             exit 0
           fi
           
@@ -54,9 +56,10 @@ jobs:
           git push origin deps/update-$DATE || exit 1
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v7
         with:
-          token: ${{ secrets.GH_TOKEN }}
+          # Changed from token to branch-token per v7 upgrade requirements
+          branch-token: ${{ secrets.GH_TOKEN }}
           title: "chore: update Go dependencies"
           body: |
             This PR updates Go dependencies to their latest versions.
@@ -72,8 +75,14 @@ jobs:
             - [ ] Run tests locally if needed
           branch: deps/update-$DATE
           base: main
-          labels: dependencies,automated
+          labels: |
+            dependencies
+            automated
           draft: false
+          # New v7 options
+          maintainer-can-modify: true
+          delete-branch: true
 
       - name: Run tests
         run: go test ./... || exit 1
+
