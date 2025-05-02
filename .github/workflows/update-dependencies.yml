@@ -2,9 +2,8 @@ name: Update Go Dependencies
 
 on:
   schedule:
-    # Run every Sunday at midnight UTC
+    # Runs every Sunday at midnight UTC
     - cron: '0 0 * * 0'
-  # Allow manual triggering
   workflow_dispatch:
 
 jobs:
@@ -16,69 +15,73 @@ jobs:
       actions: write
 
     steps:
+      # Step 1: Checkout code from the main branch
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           ref: main
 
+      # Step 2: Set up Go environment
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
           go-version: '1.24'
           cache: true
 
+      # Step 3: Configure Git for commit and push
       - name: Configure Git
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
 
-      - name: Update dependencies
+      # Step 4: Create a new branch for the updates
+      - name: Create new branch and update dependencies
         id: update
         run: |
           # Get current date for branch name and PR title
           DATE=$(date +"%Y-%m-%d")
           BRANCH_NAME="deps/update-$DATE"
-          echo "date=$DATE" >> $GITHUB_OUTPUT
-          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_ENV
           
-          # Create and switch to a new branch
-          git switch -c "$BRANCH_NAME"
-          
-          # Forcefully update all dependencies, even if they are up-to-date
-          go get -u -v ./...
+          # Create and switch to the new branch
+          git checkout -b "$BRANCH_NAME"
+
+          # Update dependencies using 'go get -u' and 'go mod tidy'
+          go get -u ./...
           go mod tidy
-          
-          # Check if there are any changes in go.mod or go.sum
+
+          # Check if there are changes in go.mod or go.sum
           if git diff --quiet go.mod go.sum; then
             echo "No dependency updates found"
-            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "has_changes=false" >> $GITHUB_ENV
             exit 0
           fi
-          
-          # Stage and commit the changes
+
+          # Stage and commit changes
           git add go.mod go.sum
           git commit -m "chore: update dependencies $DATE"
-          
-          # Push the branch to the remote repository
-          git push --set-upstream origin "$BRANCH_NAME"
-          echo "has_changes=true" >> $GITHUB_OUTPUT
 
+          # Push the new branch to remote repository
+          git push --set-upstream origin "$BRANCH_NAME"
+          echo "has_changes=true" >> $GITHUB_ENV
+
+      # Step 5: Create a pull request if changes are detected
       - name: Create Pull Request
-        if: steps.update.outputs.has_changes == 'true'
+        if: env.has_changes == 'true'
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.GH_TOKEN }}
-          branch: ${{ steps.update.outputs.branch_name }}
+          branch: ${{ env.branch_name }}
           base: main
           title: "chore: update Go dependencies"
           body: |
             This PR updates Go dependencies to their latest versions.
             
             This is an automated PR created by the weekly dependency update workflow.
-            
+
             ## Changes
-            - Updated Go dependencies to latest versions
+            - Updated Go dependencies to the latest versions
             - Run `go mod tidy` to clean up dependencies
             
             ## Checks
@@ -87,8 +90,8 @@ jobs:
           labels: dependencies, automated
           draft: false
           maintainer-can-modify: true
-          delete-branch: true
 
+      # Step 6: Run tests after PR is created
       - name: Run tests
-        if: steps.update.outputs.has_changes == 'true'
+        if: env.has_changes == 'true'
         run: go test ./... || exit 1
