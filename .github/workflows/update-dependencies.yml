@@ -1,6 +1,10 @@
+name: Update Go Dependencies
+
 on:
   schedule:
+    # Run every Sunday at midnight UTC
     - cron: '0 0 * * 0'
+  # Allow manual triggering
   workflow_dispatch:
 
 jobs:
@@ -32,6 +36,7 @@ jobs:
       - name: Update dependencies
         id: update
         run: |
+          # Get current date for branch name and PR title
           DATE=$(date +"%Y-%m-%d")
           BRANCH_NAME="deps/update-$DATE"
           echo "date=$DATE" >> $GITHUB_OUTPUT
@@ -40,11 +45,11 @@ jobs:
           # Create and switch to a new branch
           git switch -c "$BRANCH_NAME"
           
-          # Update all dependencies
-          go get -u ./...
+          # Forcefully update all dependencies, even if they are up-to-date
+          go get -u -v ./...
           go mod tidy
           
-          # Check if there are any changes
+          # Check if there are any changes in go.mod or go.sum
           if git diff --quiet go.mod go.sum; then
             echo "No dependency updates found"
             echo "has_changes=false" >> $GITHUB_OUTPUT
@@ -69,7 +74,16 @@ jobs:
           title: "chore: update Go dependencies"
           body: |
             This PR updates Go dependencies to their latest versions.
+            
             This is an automated PR created by the weekly dependency update workflow.
+            
+            ## Changes
+            - Updated Go dependencies to latest versions
+            - Run `go mod tidy` to clean up dependencies
+            
+            ## Checks
+            - [ ] Review the changes to ensure they don't introduce breaking changes
+            - [ ] Run tests locally if needed
           labels: dependencies, automated
           draft: false
           maintainer-can-modify: true
