@@ -1,16 +1,11 @@
-name: Update Go Dependencies
-
 on:
   schedule:
-    # Run every Sunday at midnight UTC
     - cron: '0 0 * * 0'
-  # Allow manual triggering
   workflow_dispatch:
 
 jobs:
   update-dependencies:
     runs-on: ubuntu-latest
-    # Update permissions to include necessary scopes
     permissions:
       contents: write
       pull-requests: write
@@ -37,7 +32,6 @@ jobs:
       - name: Update dependencies
         id: update
         run: |
-          # Get current date for branch name and PR title
           DATE=$(date +"%Y-%m-%d")
           BRANCH_NAME="deps/update-$DATE"
           echo "date=$DATE" >> $GITHUB_OUTPUT
@@ -69,25 +63,14 @@ jobs:
         if: steps.update.outputs.has_changes == 'true'
         uses: peter-evans/create-pull-request@v7
         with:
-          branch-token: ${{ secrets.GH_TOKEN }}
+          token: ${{ secrets.GH_TOKEN }}
           branch: ${{ steps.update.outputs.branch_name }}
           base: main
           title: "chore: update Go dependencies"
           body: |
             This PR updates Go dependencies to their latest versions.
-            
             This is an automated PR created by the weekly dependency update workflow.
-            
-            ## Changes
-            - Updated Go dependencies to latest versions
-            - Run `go mod tidy` to clean up dependencies
-            
-            ## Checks
-            - [ ] Review the changes to ensure they don't introduce breaking changes
-            - [ ] Run tests locally if needed
-          labels: |
-            dependencies
-            automated
+          labels: dependencies, automated
           draft: false
           maintainer-can-modify: true
           delete-branch: true
