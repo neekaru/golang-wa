@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -140,7 +141,7 @@ func (m *ClientManager) RemoveClient(id string) error {
 		m.logger.Printf("Successfully connected client %s, attempting logout", id)
 
 		// Try to logout, but don't worry if it fails
-		logoutErr := client.WhatsmeowClient.Logout()
+		logoutErr := client.WhatsmeowClient.Logout(context.Background())
 		if logoutErr != nil {
 			m.logger.Printf("Logout error for client %s (this is usually not critical): %v", id, logoutErr)
 		} else {
