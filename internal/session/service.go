@@ -71,7 +71,7 @@ func (s *Service) RestoreSession(user string) (*app.Session, error) {
 	dbPath := "data/" + user + ".db"
 
 	// Create a context with timeout to prevent indefinite blocking
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	// Create a logger specifically for this database connection
@@ -88,7 +88,7 @@ func (s *Service) RestoreSession(user string) (*app.Session, error) {
 
 	go func() {
 		// Try to open the database with compatibility for old format
-		container, err := sqlstore.New("sqlite3", "file:"+dbPath+"?_foreign_keys=on", dbLogger)
+		container, err := sqlstore.New(ctx, "sqlite3", "file:"+dbPath+"?_foreign_keys=on", dbLogger)
 		resultChan <- dbResult{container, err}
 	}()
 
@@ -116,7 +116,7 @@ func (s *Service) RestoreSession(user string) (*app.Session, error) {
 	}, 1)
 
 	go func() {
-		deviceStore, err := container.GetFirstDevice()
+		deviceStore, err := container.GetFirstDevice(ctx)
 		deviceChan <- struct {
 			device *store.Device
 			err    error
@@ -322,13 +322,13 @@ func (s *Service) AddSession(user string) (*app.Session, error) {
 
 	// Initialize the database connection
 	dbLog := waLog.Stdout("Database", "INFO", true)
-	container, err := sqlstore.New("sqlite3", "file:"+dbPath+"?_foreign_keys=on", dbLog)
+	container, err := sqlstore.New(context.Background(), "sqlite3", "file:"+dbPath+"?_foreign_keys=on", dbLog)
 	if err != nil {
 		return nil, fmt.Errorf("db error: %v", err)
 	}
 
 	// Get the device store from the database
-	deviceStore, err := container.GetFirstDevice()
+	deviceStore, err := container.GetFirstDevice(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("device error: %v", err)
 	}
@@ -413,7 +413,7 @@ func (s *Service) LogoutSession(user string) error {
 			s.app.Logger.Printf("Successfully connected client for %s, attempting logout", user)
 
 			// Try to logout, but don't worry if it fails
-			logoutErr := sess.Client.Logout()
+			logoutErr := sess.Client.Logout(context.Background())
 			if logoutErr != nil {
 				s.app.Logger.Printf("Logout error for %s (this is usually not critical): %v", user, logoutErr)
 			} else {

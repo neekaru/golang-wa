@@ -57,7 +57,11 @@ func (s *Service) SendMessage(user, phoneNumber, message string) error {
 		ID: whatsmeow.GenerateMessageID(),
 	}
 
-	_, err := sess.Client.SendMessage(context.Background(), recipient, msg, opts)
+	// Use a context with a longer timeout (60 seconds) for message sending operations
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	_, err := sess.Client.SendMessage(ctx, recipient, msg, opts)
 	if err != nil {
 		return fmt.Errorf("failed to send message: %v", err)
 	}
@@ -83,6 +87,10 @@ func (s *Service) MarkRead(user string, messageIDs []string, fromJID, toJID stri
 
 	fromJIDObj := types.JID{User: fromJID, Server: "s.whatsapp.net"}
 	toJIDObj := types.JID{User: toJID, Server: "s.whatsapp.net"}
+
+	// Use a context with a timeout for the MarkRead operation
+	_, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	err := sess.Client.MarkRead(typedMessageIDs, time.Now(), fromJIDObj, toJIDObj, types.ReceiptTypeRead)
 	if err != nil {
