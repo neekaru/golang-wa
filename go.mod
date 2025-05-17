@@ -43,8 +43,8 @@ require (
 	github.com/petermattis/goid v0.0.0-20250508124226-395b08cebbdb // indirect
 	github.com/rs/zerolog v1.34.0 // indirect
 	go.mau.fi/libsignal v0.2.0 // indirect
-	go.mau.fi/util v0.8.6 // indirect
-	go.mau.fi/whatsmeow v0.0.0-20250513160404-6c1afd41ccec
+	go.mau.fi/util v0.8.7 // indirect
+	go.mau.fi/whatsmeow v0.0.0-20250515105332-8c870897140e
 	golang.org/x/crypto v0.38.0 // indirect
 	golang.org/x/exp v0.0.0-20250506013437-ce4c2cf36ca6 // indirect
 	golang.org/x/net v0.40.0 // indirect
