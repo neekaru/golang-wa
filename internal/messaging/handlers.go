@@ -2,7 +2,6 @@ package messaging
 
 import (
 	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/neekaru/whatsappgo-bot/internal/app"
