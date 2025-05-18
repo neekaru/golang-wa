@@ -67,17 +67,17 @@ func (s *Service) SendMedia(user, phoneNumber, mediaType, mediaData, mediaURL, c
 		// Download media from URL
 		httpResp, err := http.Get(mediaURL)
 		if err != nil {
-			return "", fmt.Errorf("failed to download media from URL: %v", err)
+			return "", fmt.Errorf("failed to download media from URL")
 		}
 		defer httpResp.Body.Close()
 
 		if httpResp.StatusCode != http.StatusOK {
-			return "", fmt.Errorf("failed to download media, status: %s", httpResp.Status)
+			return "", fmt.Errorf("failed to download media")
 		}
 
 		media, err = io.ReadAll(httpResp.Body)
 		if err != nil {
-			return "", fmt.Errorf("failed to read media from URL: %v", err)
+			return "", fmt.Errorf("failed to download media")
 		}
 
 		mimeType = httpResp.Header.Get("Content-Type")
