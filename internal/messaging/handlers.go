@@ -2,6 +2,7 @@ package messaging
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/neekaru/whatsappgo-bot/internal/app"
@@ -31,7 +32,14 @@ func (h *Handlers) SendMessageHandler(c *gin.Context) {
 
 	err := h.service.SendMessage(req.User, req.PhoneNumber, req.Message)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		// Log the detailed error
+		h.app.Logger.Printf("Message send error: %v", err)
+
+		// Return 200 status with error details
+		c.JSON(http.StatusOK, gin.H{
+			"error":   "file/url cannot be send",
+			"details": err.Error(),
+		})
 		return
 	}
 
@@ -48,7 +56,14 @@ func (h *Handlers) MarkReadHandler(c *gin.Context) {
 
 	err := h.service.MarkRead(req.User, req.MessageID, req.FromJID, req.ToJID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		// Log the detailed error
+		h.app.Logger.Printf("Mark read error: %v", err)
+		
+		// Return 200 status with error details
+		c.JSON(http.StatusOK, gin.H{
+			"msg":   "file/url cannot be send",
+			"details": err.Error(),
+		})
 		return
 	}
 

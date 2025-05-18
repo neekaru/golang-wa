@@ -2,6 +2,7 @@ package media
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/neekaru/whatsappgo-bot/internal/app"
@@ -54,7 +55,27 @@ func (h *Handlers) sendMediaHandler(c *gin.Context, mediaType string) {
 		req.FileName,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		// Log the detailed error
+		h.app.Logger.Printf("Media send error for type %s: %v", mediaType, err)
+		
+		// Check if error is related to file/URL access
+		if err.Error() == "failed to download media from URL" || 
+		   strings.Contains(err.Error(), "failed to download media") ||
+		   strings.Contains(err.Error(), "invalid media format") ||
+		   strings.Contains(err.Error(), "failed to upload media") ||
+		   strings.Contains(err.Error(), "failed to send media message") {
+			c.JSON(http.StatusOK, gin.H{
+				"msg":   "file/url cannot be send",
+				"details": err.Error(),
+			})
+			return
+		}
+		
+		// For other types of errors, still return 200 but with different message
+		c.JSON(http.StatusOK, gin.H{
+			"msg":   "file/url cannot be send",
+			"details": err.Error(),
+		})
 		return
 	}
 
