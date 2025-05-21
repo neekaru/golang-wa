@@ -171,7 +171,7 @@ show_logs() {
 # Format Caddyfile
 format_caddyfile() {
     echo -e "${BLUE}Formatting Caddyfile...${NC}"
-    docker run --rm -v "$(pwd)/Caddyfile:/etc/caddy/Caddyfile" caddy:2.7-alpine caddy fmt --overwrite /etc/caddy/Caddyfile
+    docker run --rm -v "$(pwd)/Caddyfile:/etc/caddy/Caddyfile" caddy:2.10-alpine caddy fmt --overwrite /etc/caddy/Caddyfile
 
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}Caddyfile formatted successfully${NC}"
