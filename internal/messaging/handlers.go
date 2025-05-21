@@ -36,7 +36,7 @@ func (h *Handlers) SendMessageHandler(c *gin.Context) {
 
 		// Return 200 status with error details
 		c.JSON(http.StatusOK, gin.H{
-			"error":   "file/url cannot be send",
+			"error":   "Message cannot be send",
 			"details": err.Error(),
 		})
 		return
@@ -59,8 +59,8 @@ func (h *Handlers) MarkReadHandler(c *gin.Context) {
 		h.app.Logger.Printf("Mark read error: %v", err)
 		
 		// Return 200 status with error details
-		c.JSON(http.StatusOK, gin.H{
-			"msg":   "file/url cannot be send",
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Message cannot be marked as read",
 			"details": err.Error(),
 		})
 		return
