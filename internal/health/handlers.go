@@ -63,7 +63,7 @@ func (h *Handlers) RootHandler(c *gin.Context) {
 		"status":        "ok",
 		"uptime":        uptime,
 		"session_count": sessionCount,
-		"version":       "1.0.0",
+		"version":       "1.0.2",
 	})
 }
 

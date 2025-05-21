@@ -223,7 +223,7 @@ Response:
   "status": "ok",
   "uptime": "3h5m10s",
   "session_count": 2,
-  "version": "1.0.0"
+  "version": "1.0.2"
 }
 ```
 
