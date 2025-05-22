@@ -202,25 +202,31 @@ func (s *Service) SendMedia(user, phoneNumber, mediaType, mediaData, mediaURL, c
 	if err != nil {
 		// Check if this is a websocket disconnection error
 		if strings.Contains(err.Error(), "websocket disconnected") {
+			// Check if the user is logged in before attempting to reconnect
+			if !sess.IsLoggedIn {
+				s.app.Logger.Printf("User %s is not logged in, not attempting to reconnect", user)
+				return "", fmt.Errorf("user is not logged in, cannot reconnect: %v", err)
+			}
+
 			s.app.Logger.Printf("Websocket disconnected during media send. Reconnecting...")
-			
+
 			// Disconnect explicitly to ensure clean state
 			sess.Client.Disconnect()
 			time.Sleep(1 * time.Second)
-			
+
 			// Try to reconnect
 			err = sess.Client.Connect()
 			if err != nil {
 				s.app.Logger.Printf("Failed to reconnect: %v", err)
 				return "", fmt.Errorf("failed to reconnect after websocket disconnection: %v", err)
 			}
-			
+
 			s.app.Logger.Printf("Successfully reconnected, retrying media send")
-			
+
 			// Try sending again
 			ctx2, cancel2 := context.WithTimeout(context.Background(), 60*time.Second)
 			defer cancel2()
-			
+
 			_, err = sess.Client.SendMessage(ctx2, recipient, &msg, opts)
 			if err != nil {
 				return "", fmt.Errorf("failed to send media message after reconnection: %v", err)
