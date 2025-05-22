@@ -84,6 +84,12 @@ func (s *Service) sendMessageWithRetry(user, phoneNumber, message string) error 
 
 			// Check if this is a websocket disconnection error
 			if strings.Contains(err.Error(), "websocket disconnected") {
+				// Check if the user is logged in before attempting to reconnect
+				if !sess.IsLoggedIn {
+					s.app.Logger.Printf("User %s is not logged in, not attempting to reconnect", user)
+					return fmt.Errorf("user is not logged in, cannot reconnect: %v", lastErr)
+				}
+
 				s.app.Logger.Printf("Websocket disconnected during message send (attempt %d/%d). Reconnecting...",
 					attempt+1, maxRetries)
 
