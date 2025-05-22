@@ -194,10 +194,44 @@ func (s *Service) SendMedia(user, phoneNumber, mediaType, mediaData, mediaURL, c
 		ID: types.MessageID(fmt.Sprintf("%d", time.Now().UnixNano())),
 	}
 
-	_, err = sess.Client.SendMessage(context.Background(), recipient, &msg, opts)
+	// Use a context with a timeout for the SendMessage operation
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	_, err = sess.Client.SendMessage(ctx, recipient, &msg, opts)
 	if err != nil {
-		return "", fmt.Errorf("failed to send media message: %v", err)
+		// Check if this is a websocket disconnection error
+		if strings.Contains(err.Error(), "websocket disconnected") {
+			s.app.Logger.Printf("Websocket disconnected during media send. Reconnecting...")
+			
+			// Disconnect explicitly to ensure clean state
+			sess.Client.Disconnect()
+			time.Sleep(1 * time.Second)
+			
+			// Try to reconnect
+			err = sess.Client.Connect()
+			if err != nil {
+				s.app.Logger.Printf("Failed to reconnect: %v", err)
+				return "", fmt.Errorf("failed to reconnect after websocket disconnection: %v", err)
+			}
+			
+			s.app.Logger.Printf("Successfully reconnected, retrying media send")
+			
+			// Try sending again
+			ctx2, cancel2 := context.WithTimeout(context.Background(), 60*time.Second)
+			defer cancel2()
+			
+			_, err = sess.Client.SendMessage(ctx2, recipient, &msg, opts)
+			if err != nil {
+				return "", fmt.Errorf("failed to send media message after reconnection: %v", err)
+			}
+		} else {
+			return "", fmt.Errorf("failed to send media message: %v", err)
+		}
 	}
+
+	// Log successful message send
+	s.app.Logger.Printf("Media sent successfully to %s from user %s", recipient.String(), user)
 
 	return detectedFileName, nil
 }

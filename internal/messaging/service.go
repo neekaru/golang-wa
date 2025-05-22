@@ -3,6 +3,7 @@ package messaging
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -29,47 +30,90 @@ func NewService(app *app.App) *Service {
 
 // SendMessage sends a text message to a WhatsApp contact
 func (s *Service) SendMessage(user, phoneNumber, message string) error {
-	sess, exists := s.sessionService.FindSessionByUser(user)
-	if !exists {
-		return fmt.Errorf("session not found")
-	}
+	return s.sendMessageWithRetry(user, phoneNumber, message)
+}
 
-	// Ensure client is connected before sending
-	if !sess.Client.IsConnected() {
-		err := sess.Client.Connect()
-		if err != nil {
-			return fmt.Errorf("failed to connect: %v", err)
+// sendMessageWithRetry attempts to send a message with automatic reconnection and retry
+// if a websocket disconnection error occurs
+func (s *Service) sendMessageWithRetry(user, phoneNumber, message string) error {
+	maxRetries := 3
+	var lastErr error
+
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		// Get the session
+		sess, exists := s.sessionService.FindSessionByUser(user)
+		if !exists {
+			return fmt.Errorf("session not found")
 		}
+
+		// Ensure client is connected before sending
+		if !sess.Client.IsConnected() {
+			err := sess.Client.Connect()
+			if err != nil {
+				s.app.Logger.Printf("Failed to connect on attempt %d: %v", attempt+1, err)
+				lastErr = fmt.Errorf("failed to connect: %v", err)
+				time.Sleep(1 * time.Second)
+				continue
+			}
+		}
+
+		// Create recipient JID
+		recipient := types.JID{
+			User:   phoneNumber,
+			Server: "s.whatsapp.net",
+		}
+
+		// Create message and send
+		msg := &waE2E.Message{
+			Conversation: proto.String(message),
+		}
+
+		opts := whatsmeow.SendRequestExtra{
+			ID: whatsmeow.GenerateMessageID(),
+		}
+
+		// Use a context with a longer timeout (60 seconds) for message sending operations
+		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+
+		// Send the message
+		_, err := sess.Client.SendMessage(ctx, recipient, msg, opts)
+		cancel() // Cancel the context after sending
+
+		if err != nil {
+			lastErr = fmt.Errorf("failed to send message: %v", err)
+
+			// Check if this is a websocket disconnection error
+			if strings.Contains(err.Error(), "websocket disconnected") {
+				s.app.Logger.Printf("Websocket disconnected during message send (attempt %d/%d). Reconnecting...",
+					attempt+1, maxRetries)
+
+				// Disconnect explicitly to ensure clean state
+				sess.Client.Disconnect()
+				time.Sleep(1 * time.Second)
+
+				// Try to reconnect
+				err = sess.Client.Connect()
+				if err != nil {
+					s.app.Logger.Printf("Failed to reconnect on attempt %d: %v", attempt+1, err)
+				} else {
+					s.app.Logger.Printf("Successfully reconnected on attempt %d, retrying message send", attempt+1)
+				}
+
+				// Continue to next attempt
+				continue
+			}
+
+			// For other types of errors, return immediately
+			return lastErr
+		}
+
+		// If we get here, the message was sent successfully
+		s.app.Logger.Printf("Message sent successfully to %s from user %s", recipient.String(), user)
+		return nil
 	}
 
-	// Create recipient JID
-	recipient := types.JID{
-		User:   phoneNumber,
-		Server: "s.whatsapp.net",
-	}
-
-	// Create message and send
-	msg := &waE2E.Message{
-		Conversation: proto.String(message),
-	}
-
-	opts := whatsmeow.SendRequestExtra{
-		ID: whatsmeow.GenerateMessageID(),
-	}
-
-	// Use a context with a longer timeout (60 seconds) for message sending operations
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
-
-	_, err := sess.Client.SendMessage(ctx, recipient, msg, opts)
-	if err != nil {
-		return fmt.Errorf("failed to send message: %v", err)
-	}
-
-	// Log successful message send
-	s.app.Logger.Printf("Message sent successfully to %s from user %s", recipient.String(), user)
-
-	return nil
+	// If we've exhausted all retries, return the last error
+	return lastErr
 }
 
 // MarkRead marks messages as read
