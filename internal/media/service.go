@@ -13,6 +13,7 @@ import (
 
 	"github.com/neekaru/whatsappgo-bot/internal/app"
 	"github.com/neekaru/whatsappgo-bot/internal/session"
+	"github.com/neekaru/whatsappgo-bot/internal/utils"
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/proto/waE2E"
 	"go.mau.fi/whatsmeow/types"
@@ -146,6 +147,21 @@ func (s *Service) SendMedia(user, phoneNumber, mediaType, mediaData, mediaURL, c
 		return "", fmt.Errorf("failed to upload media: %v", err)
 	}
 
+	var thumbnail []byte
+	if mediaType == "video" {
+		var errThumbnail error
+		thumbnail, errThumbnail = utils.VideoThumbnail(
+			media,
+			0,
+			struct{ Width int }{Width: 72},
+		)
+
+		if errThumbnail != nil {
+			s.app.Logger.Printf("Failed to generate video thumbnail: %v", errThumbnail)
+			thumbnail = nil // Proceed without a thumbnail if generation fails
+		}
+	}
+
 	var msg waE2E.Message
 	switch mediaType {
 	case "image":
@@ -165,13 +181,14 @@ func (s *Service) SendMedia(user, phoneNumber, mediaType, mediaData, mediaURL, c
 		msg = waE2E.Message{
 			VideoMessage: &waE2E.VideoMessage{
 				Caption:       proto.String(caption),
-				URL:           proto.String(uploaded.URL),
-				DirectPath:    proto.String(uploaded.DirectPath),
+				URL:           &uploaded.URL,
+				DirectPath:    &uploaded.DirectPath,
 				MediaKey:      uploaded.MediaKey,
 				Mimetype:      proto.String(mimeType),
 				FileEncSHA256: uploaded.FileEncSHA256,
 				FileSHA256:    uploaded.FileSHA256,
-				FileLength:    proto.Uint64(uint64(len(media))),
+				FileLength:    &uploaded.FileLength,
+				JPEGThumbnail: thumbnail,
 			},
 		}
 	case "file":

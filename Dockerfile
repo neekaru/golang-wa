@@ -13,7 +13,7 @@ RUN CGO_ENABLED=1 GOOS=linux go build -o bot .
 
 FROM alpine:3.21.3
 
-RUN apk add --no-cache ca-certificates supervisor sqlite curl
+RUN apk add --no-cache ca-certificates supervisor sqlite curl ffmpeg
 
 WORKDIR /app
 
