@@ -1,6 +1,6 @@
 module github.com/neekaru/whatsappgo-bot
 
-go 1.24.3
+go 1.24.4
 
 require (
 	github.com/gin-contrib/cors v1.7.5
@@ -48,7 +48,7 @@ require (
 	github.com/rs/zerolog v1.34.0 // indirect
 	go.mau.fi/libsignal v0.2.0 // indirect
 	go.mau.fi/util v0.8.7 // indirect
-	go.mau.fi/whatsmeow v0.0.0-20250606170101-3afe34f8ab8f
+	go.mau.fi/whatsmeow v0.0.0-20250611144432-af1a723d11ee
 	golang.org/x/crypto v0.39.0 // indirect
 	golang.org/x/exp v0.0.0-20250606033433-dcc06ee1d476 // indirect
 	golang.org/x/net v0.41.0 // indirect
