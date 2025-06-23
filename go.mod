@@ -3,7 +3,7 @@ module github.com/neekaru/whatsappgo-bot
 go 1.24.4
 
 require (
-	github.com/gin-contrib/cors v1.7.5
+	github.com/gin-contrib/cors v1.7.6
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/u2takey/ffmpeg-go v0.5.0
 )
