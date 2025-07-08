@@ -297,6 +297,88 @@ Many endpoints now include a detailed status object:
 }
 ```
 
+## Contact Management
+
+### 1. Get All Contacts
+Retrieve all contacts for a user (both saved and unsaved).
+
+```bash
+curl -X POST http://localhost:8080/contact \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user": "test_user"
+  }'
+```
+
+**Success Response:**
+```json
+{
+  "contacts": [
+    {
+      "jid": "1234567890@s.whatsapp.net",
+      "phone_number": "1234567890",
+      "name": "John Doe",
+      "push_name": "John",
+      "business_name": "",
+      "is_saved": true,
+      "is_business": false
+    },
+    {
+      "jid": "0987654321@s.whatsapp.net",
+      "phone_number": "0987654321",
+      "name": "",
+      "push_name": "Unknown User",
+      "business_name": "",
+      "is_saved": false,
+      "is_business": false
+    }
+  ],
+  "total": 2,
+  "user": "test_user"
+}
+```
+
+### 2. Get Saved Contacts
+Retrieve only contacts that have been saved (have names).
+
+```bash
+curl -X POST http://localhost:8080/contact/saved \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user": "test_user"
+  }'
+```
+
+### 3. Get Unsaved Contacts
+Retrieve only contacts that haven't been saved (no names).
+
+```bash
+curl -X POST http://localhost:8080/contact/unsaved \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user": "test_user"
+  }'
+```
+
+### 4. Refresh Contacts
+Force refresh the contact list from WhatsApp servers.
+
+```bash
+curl -X POST http://localhost:8080/contact/refresh \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user": "test_user"
+  }'
+```
+
+**Success Response:**
+```json
+{
+  "msg": "Contacts refreshed successfully",
+  "user": "test_user"
+}
+```
+
 ## Important Notes
 
 1. Replace `test_user` with your actual user identifier
