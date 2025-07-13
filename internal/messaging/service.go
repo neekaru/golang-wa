@@ -30,12 +30,37 @@ func NewService(app *app.App) *Service {
 
 // SendMessage sends a text message to a WhatsApp contact
 func (s *Service) SendMessage(user, phoneNumber, message string) error {
-	   // Check if phoneNumber is empty or only whitespace
-	   if strings.TrimSpace(phoneNumber) == "" {
-			   s.app.Logger.Printf("Warning: phone number is empty for user %s", user)
-			   return fmt.Errorf("phone number is empty, cannot send message")
-	   }
-	   return s.sendMessageWithRetry(user, phoneNumber, message)
+	// Check if phoneNumber is empty or only whitespace
+	if strings.TrimSpace(phoneNumber) == "" {
+		s.app.Logger.Printf("Warning: phone number is empty for user %s", user)
+		return fmt.Errorf("phone number is empty, cannot send message")
+	}
+	// Check if phoneNumber is valid: all digits or starts with '+' followed by digits
+	valid := true
+	if phoneNumber[0] == '+' {
+		if len(phoneNumber) == 1 {
+			valid = false
+		} else {
+			for _, c := range phoneNumber[1:] {
+				if c < '0' || c > '9' {
+					valid = false
+					break
+				}
+			}
+		}
+	} else {
+		for _, c := range phoneNumber {
+			if c < '0' || c > '9' {
+				valid = false
+				break
+			}
+		}
+	}
+	if !valid {
+		s.app.Logger.Printf("Warning: phone number is invalid for user %s: %s", user, phoneNumber)
+		return fmt.Errorf("phone number is invalid, must be all digits or start with '+' followed by digits")
+	}
+	return s.sendMessageWithRetry(user, phoneNumber, message)
 }
 
 // sendMessageWithRetry attempts to send a message with automatic reconnection and retry
