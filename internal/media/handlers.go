@@ -45,42 +45,51 @@ func (h *Handlers) sendMediaHandler(c *gin.Context, mediaType string) {
 		return
 	}
 
-	fileName, err := h.service.SendMedia(
-		req.User,
-		req.PhoneNumber,
-		mediaType,
-		req.Media,
-		req.URL,
-		req.Caption,
-		req.FileName,
-	)
-	if err != nil {
-		// Log the detailed error
-		h.app.Logger.Printf("Media send error for type %s: %v", mediaType, err)
-		
-		// Check if error is related to file/URL access
-		if err.Error() == "failed to download media from URL" || 
-		   strings.Contains(err.Error(), "failed to download media") ||
-		   strings.Contains(err.Error(), "invalid media format") ||
-		   strings.Contains(err.Error(), "failed to upload media") ||
-		   strings.Contains(err.Error(), "failed to send media message") {
-			c.JSON(http.StatusOK, gin.H{
-				"msg":   "file/url cannot be send",
-				"details": err.Error(),
-			})
-			return
-		}
-		
-		// For other types of errors, still return 200 but with different message
-		c.JSON(http.StatusOK, gin.H{
-			"msg":   "file/url cannot be send",
-			"details": err.Error(),
-		})
-		return
-	}
+	   fileName, err := h.service.SendMedia(
+			   req.User,
+			   req.PhoneNumber,
+			   mediaType,
+			   req.Media,
+			   req.URL,
+			   req.Caption,
+			   req.FileName,
+	   )
+	   if err != nil {
+			   // Log the detailed error
+			   h.app.Logger.Printf("Media send error for type %s: %v", mediaType, err)
 
-	c.JSON(http.StatusOK, gin.H{
-		"msg":       mediaType + " sent successfully",
-		"file_name": fileName,
-	})
+			   // Special handling for empty phone number
+			   if err.Error() == "phone number is empty, cannot send media" {
+					   c.JSON(http.StatusOK, gin.H{
+							   "error":   "Media cannot be send",
+							   "details": err.Error(),
+					   })
+					   return
+			   }
+
+			   // Check if error is related to file/URL access
+			   if err.Error() == "failed to download media from URL" || 
+				  strings.Contains(err.Error(), "failed to download media") ||
+				  strings.Contains(err.Error(), "invalid media format") ||
+				  strings.Contains(err.Error(), "failed to upload media") ||
+				  strings.Contains(err.Error(), "failed to send media message") {
+					   c.JSON(http.StatusOK, gin.H{
+							   "msg":   "file/url cannot be send",
+							   "details": err.Error(),
+					   })
+					   return
+			   }
+
+			   // For other types of errors, still return 200 but with different message
+			   c.JSON(http.StatusOK, gin.H{
+					   "msg":   "file/url cannot be send",
+					   "details": err.Error(),
+			   })
+			   return
+	   }
+
+	   c.JSON(http.StatusOK, gin.H{
+			   "msg":       mediaType + " sent successfully",
+			   "file_name": fileName,
+	   })
 }
