@@ -36,23 +36,29 @@ func NewService(app *app.App) *Service {
 
 // SendMedia sends media (image, video, file) to a WhatsApp contact
 func (s *Service) SendMedia(user, phoneNumber, mediaType, mediaData, mediaURL, caption, fileName string) (string, error) {
-	sess, exists := s.sessionService.FindSessionByUser(user)
-	if !exists {
-		return "", fmt.Errorf("session not found")
-	}
+	   // Check if phoneNumber is empty or only whitespace
+	   if strings.TrimSpace(phoneNumber) == "" {
+			   s.app.Logger.Printf("Warning: phone number is empty for user %s", user)
+			   return "", fmt.Errorf("phone number is empty, cannot send media")
+	   }
 
-	// Ensure client is connected before sending
-	if !sess.Client.IsConnected() {
-		err := sess.Client.Connect()
-		if err != nil {
-			return "", fmt.Errorf("failed to connect: %v", err)
-		}
-	}
+	   sess, exists := s.sessionService.FindSessionByUser(user)
+	   if !exists {
+			   return "", fmt.Errorf("session not found")
+	   }
 
-	recipient := types.JID{
-		User:   phoneNumber,
-		Server: "s.whatsapp.net",
-	}
+	   // Ensure client is connected before sending
+	   if !sess.Client.IsConnected() {
+			   err := sess.Client.Connect()
+			   if err != nil {
+					   return "", fmt.Errorf("failed to connect: %v", err)
+			   }
+	   }
+
+	   recipient := types.JID{
+			   User:   phoneNumber,
+			   Server: "s.whatsapp.net",
+	   }
 
 	var media []byte
 	var mimeType string

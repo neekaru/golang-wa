@@ -144,6 +144,15 @@ curl -X POST http://localhost:8080/send/image \
   }'
 ```
 
+**Error Response: Empty Phone Number**
+If the `phone_number` field is empty or only whitespace, the API will return:
+```json
+{
+  "error": "Media cannot be send",
+  "details": "phone number is empty, cannot send media"
+}
+```
+
 ### 3. Send Video
 Send a video with optional caption. The video can be provided as base64 encoded data or a URL.
 
@@ -169,6 +178,15 @@ curl -X POST http://localhost:8080/send/video \
   }'
 ```
 
+**Error Response: Empty Phone Number**
+If the `phone_number` field is empty or only whitespace, the API will return:
+```json
+{
+  "error": "Media cannot be send",
+  "details": "phone number is empty, cannot send media"
+}
+```
+
 ### 4. Send File
 Send any type of file with optional caption. The file can be provided as base64 encoded data or a URL.
 
@@ -192,6 +210,15 @@ curl -X POST http://localhost:8080/send/file \
     "url": "https://example.com/document.pdf",
     "caption": "Here's the document!"
   }'
+```
+
+**Error Response: Empty Phone Number**
+If the `phone_number` field is empty or only whitespace, the API will return:
+```json
+{
+  "error": "Media cannot be send",
+  "details": "phone number is empty, cannot send media"
+}
 ```
 
 ### 5. Mark Messages as Read
