@@ -36,29 +36,52 @@ func NewService(app *app.App) *Service {
 
 // SendMedia sends media (image, video, file) to a WhatsApp contact
 func (s *Service) SendMedia(user, phoneNumber, mediaType, mediaData, mediaURL, caption, fileName string) (string, error) {
-	   // Check if phoneNumber is empty or only whitespace
-	   if strings.TrimSpace(phoneNumber) == "" {
-			   s.app.Logger.Printf("Warning: phone number is empty for user %s", user)
-			   return "", fmt.Errorf("phone number is empty, cannot send media")
-	   }
+	// Check if phoneNumber is empty or only whitespace
+	if strings.TrimSpace(phoneNumber) == "" {
+		s.app.Logger.Printf("Warning: phone number is empty for user %s", user)
+		return "", fmt.Errorf("phone number is empty, cannot send media")
+	}
+	// Check if phoneNumber is valid: all digits or starts with '+' followed by digits
+	valid := true
+	if phoneNumber[0] == '+' {
+		if len(phoneNumber) == 1 {
+			valid = false
+		} else {
+			for _, c := range phoneNumber[1:] {
+				if c < '0' || c > '9' {
+					valid = false
+					break
+				}
+			}
+		}
+	} else {
+		for _, c := range phoneNumber {
+			if c < '0' || c > '9' {
+				valid = false
+				break
+			}
+		}
+	}
+	if !valid {
+		s.app.Logger.Printf("Warning: phone number is invalid for user %s: %s", user, phoneNumber)
+		return "", fmt.Errorf("phone number is invalid, must be all digits or start with '+' followed by digits")
+	}
+	sess, exists := s.sessionService.FindSessionByUser(user)
+	if !exists {
+		return "", fmt.Errorf("session not found")
+	}
+	// Ensure client is connected before sending
+	if !sess.Client.IsConnected() {
+		err := sess.Client.Connect()
+		if err != nil {
+			return "", fmt.Errorf("failed to connect: %v", err)
+		}
+	}
 
-	   sess, exists := s.sessionService.FindSessionByUser(user)
-	   if !exists {
-			   return "", fmt.Errorf("session not found")
-	   }
-
-	   // Ensure client is connected before sending
-	   if !sess.Client.IsConnected() {
-			   err := sess.Client.Connect()
-			   if err != nil {
-					   return "", fmt.Errorf("failed to connect: %v", err)
-			   }
-	   }
-
-	   recipient := types.JID{
-			   User:   phoneNumber,
-			   Server: "s.whatsapp.net",
-	   }
+	recipient := types.JID{
+		User:   phoneNumber,
+		Server: "s.whatsapp.net",
+	}
 
 	var media []byte
 	var mimeType string
