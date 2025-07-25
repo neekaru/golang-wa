@@ -10,7 +10,7 @@ require (
 
 require (
 	github.com/aws/aws-sdk-go v1.55.7 // indirect
-	github.com/bytedance/sonic v1.13.3 // indirect
+	github.com/bytedance/sonic v1.14.0 // indirect
 	github.com/bytedance/sonic/loader v0.3.0 // indirect
 	github.com/cloudwego/base64x v0.1.5 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.9 // indirect
@@ -21,7 +21,7 @@ require (
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/klauspost/cpuid/v2 v2.2.11 // indirect
+	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
@@ -43,14 +43,14 @@ require (
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/mattn/go-sqlite3 v1.14.28
-	github.com/petermattis/goid v0.0.0-20250508124226-395b08cebbdb // indirect
+	github.com/mattn/go-sqlite3 v1.14.29
+	github.com/petermattis/goid v0.0.0-20250721140440-ea1c0173183e // indirect
 	github.com/rs/zerolog v1.34.0 // indirect
 	go.mau.fi/libsignal v0.2.0 // indirect
 	go.mau.fi/util v0.8.8 // indirect
-	go.mau.fi/whatsmeow v0.0.0-20250709212552-0b8557ee0860
+	go.mau.fi/whatsmeow v0.0.0-20250723174453-937d77661333
 	golang.org/x/crypto v0.40.0 // indirect
-	golang.org/x/exp v0.0.0-20250711185948-6ae5c78190dc // indirect
+	golang.org/x/exp v0.0.0-20250718183923-645b1fa84792 // indirect
 	golang.org/x/net v0.42.0 // indirect
 	golang.org/x/sys v0.34.0 // indirect
 	google.golang.org/protobuf v1.36.6
