@@ -2,13 +2,15 @@
 
 This document provides documentation for all available API endpoints and their corresponding curl commands for testing.
 
+**Note**: Replace `your-domain.com` with your actual domain name in all examples below. For local testing without nginx, you can use `http://localhost:8080` instead.
+
 ## Session Management
 
 ### 1. Create New Session
 Creates a new WhatsApp session for a user.
 
 ```bash
-curl -X POST http://localhost:8080/wa/add \
+curl -X POST https://your-domain.com/wa/add \
   -H "Content-Type: application/json" \
   -d '{
     "user": "test_user"
@@ -19,7 +21,7 @@ curl -X POST http://localhost:8080/wa/add \
 Get QR code for WhatsApp Web authentication. This endpoint will only generate a QR code if the user is not already logged in and connected.
 
 ```bash
-curl -X GET "http://localhost:8080/wa/qr-image?user=test_user"
+curl -X GET "https://your-domain.com/wa/qr-image?user=test_user"
 ```
 
 **Success Response:**
@@ -414,7 +416,7 @@ curl -X POST http://localhost:8080/contact/refresh \
    - Base64 encoded data with the `media` parameter
    - Direct URL to the media with the `url` parameter
 4. Session must be created and authenticated before sending messages
-5. All endpoints run on `localhost:8080` by default
+5. All endpoints are accessible through your configured domain (or `localhost:8080` for local testing)
 6. The server is designed to handle multiple WhatsApp sessions simultaneously
 7. Sessions are persisted to the filesystem in the "data" directory
 8. The server supports graceful shutdown when receiving SIGINT or SIGTERM signals

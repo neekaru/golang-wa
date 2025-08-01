@@ -3,6 +3,8 @@ services:
     image: ${REGISTRY}/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest
     container_name: whatsapp-api
     restart: unless-stopped
+    ports:
+      - "8080:8080"  # Expose API port directly
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
@@ -19,43 +21,6 @@ services:
       options:
         max-size: "10m"
         max-file: "5"
-
-  caddy:
-    build:
-      context: .
-      dockerfile: Dockerfile.caddy
-    container_name: caddy
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-      - ./logs:/var/log/caddy
-    networks:
-      - whatsapp-network
-    depends_on:
-      - whatsapp-api
-    healthcheck:
-      test: ["CMD", "caddy", "version"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-    labels:
-      - "com.centurylinklabs.watchtower.enable=true"
-    mem_limit: 512m
-    cpus: "0.5"
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "5"
-
-volumes:
-  caddy_data:
-  caddy_config:
 
 networks:
   whatsapp-network:
