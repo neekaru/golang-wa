@@ -29,8 +29,8 @@ RUN mkdir -p /var/log/supervisor /app/data /app/logs && \
 # This is a fallback in case the application's internal log rotation fails
 RUN echo '0 0 * * * find /app/logs -name "whatsapp-api-*.log" -mtime +7 -delete' > /etc/crontabs/root
 
-# Expose port 8080 for the API
-EXPOSE 8080
+# Expose port 3000 for the API
+EXPOSE 3000
 
 # Define volumes for both data and logs
 VOLUME ["/app/data", "/app/logs"]

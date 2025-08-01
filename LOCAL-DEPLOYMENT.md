@@ -55,7 +55,7 @@ mkdir -p data logs
 nohup ./whatsapp-api > logs/app.log 2>&1 &
 ```
 
-The API will be available at `http://localhost:8080`
+The API will be available at `http://localhost:3000`
 
 ### 4. Create Systemd Service (Optional)
 
@@ -133,9 +133,9 @@ For production deployments, use nginx as a reverse proxy. See [NGINX-SETUP.md](N
 
 Once running, your API will be available at:
 
-- `http://localhost:8080/` - Main API endpoint
-- `http://localhost:8080/health` - Health check
-- `http://localhost:8080/wa/qr-image?user=test_user` - QR code generation
+- `http://localhost:3000/` - Main API endpoint
+- `http://localhost:3000/health` - Health check
+- `http://localhost:3000/wa/qr-image?user=test_user` - QR code generation
 
 For all available endpoints, see [docs.md](docs.md).
 
@@ -154,14 +154,14 @@ tail -f logs/app.log
 ### Health Check
 
 ```bash
-curl http://localhost:8080/health
+curl http://localhost:3000/health
 ```
 
 ## Troubleshooting
 
-1. **Port already in use**: Check if another service is using port 8080
+1. **Port already in use**: Check if another service is using port 3000
    ```bash
-   sudo netstat -tlnp | grep 8080
+   sudo netstat -tlnp | grep 3000
    ```
 
 2. **Permission denied**: Ensure the user has proper permissions to the application directory

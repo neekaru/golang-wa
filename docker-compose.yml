@@ -4,7 +4,7 @@ services:
     container_name: whatsapp-api
     restart: unless-stopped
     ports:
-      - "8080:8080"  # Expose API port directly
+      - "3000:3000"  # Expose API port directly for nginx setup
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
