@@ -11,7 +11,7 @@ RUN go mod download
 # Disable CGO but remove static build flags
 RUN CGO_ENABLED=1 GOOS=linux go build -o bot .
 
-FROM alpine:3.22.0
+FROM alpine:3.22.1
 
 RUN apk add --no-cache ca-certificates supervisor sqlite curl ffmpeg
 
@@ -36,3 +36,4 @@ EXPOSE 8080
 VOLUME ["/app/data", "/app/logs"]
 
 CMD ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+
