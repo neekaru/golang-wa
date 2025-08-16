@@ -1,6 +1,6 @@
 module github.com/neekaru/whatsappgo-bot
 
-go 1.24.4
+go 1.25.0
 
 require (
 	github.com/gin-contrib/cors v1.7.6
@@ -30,8 +30,8 @@ require (
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/u2takey/go-utils v0.3.1 // indirect
 	github.com/ugorji/go/codec v1.3.0 // indirect
-	golang.org/x/arch v0.19.0 // indirect
-	golang.org/x/text v0.27.0 // indirect
+	golang.org/x/arch v0.20.0 // indirect
+	golang.org/x/text v0.28.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
@@ -43,15 +43,15 @@ require (
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/mattn/go-sqlite3 v1.14.30
-	github.com/petermattis/goid v0.0.0-20250721140440-ea1c0173183e // indirect
+	github.com/mattn/go-sqlite3 v1.14.32
+	github.com/petermattis/goid v0.0.0-20250813065127-a731cc31b4fe // indirect
 	github.com/rs/zerolog v1.34.0 // indirect
 	go.mau.fi/libsignal v0.2.0 // indirect
-	go.mau.fi/util v0.8.8 // indirect
-	go.mau.fi/whatsmeow v0.0.0-20250805094724-a2272061b926
-	golang.org/x/crypto v0.40.0 // indirect
-	golang.org/x/exp v0.0.0-20250718183923-645b1fa84792 // indirect
-	golang.org/x/net v0.42.0 // indirect
-	golang.org/x/sys v0.34.0 // indirect
-	google.golang.org/protobuf v1.36.6
+	go.mau.fi/util v0.9.0 // indirect
+	go.mau.fi/whatsmeow v0.0.0-20250816112049-1b82e4b52df1
+	golang.org/x/crypto v0.41.0 // indirect
+	golang.org/x/exp v0.0.0-20250813145105-42675adae3e6 // indirect
+	golang.org/x/net v0.43.0 // indirect
+	golang.org/x/sys v0.35.0 // indirect
+	google.golang.org/protobuf v1.36.7
 )
