@@ -10,10 +10,13 @@ require (
 
 require (
 	github.com/aws/aws-sdk-go v1.55.8 // indirect
-	github.com/bytedance/sonic v1.14.0 // indirect
+	github.com/beeper/argo-go v1.1.2 // indirect
+	github.com/bytedance/gopkg v0.1.3 // indirect
+	github.com/bytedance/sonic v1.14.1 // indirect
 	github.com/bytedance/sonic/loader v0.3.0 // indirect
 	github.com/cloudwego/base64x v0.1.6 // indirect
-	github.com/gabriel-vasile/mimetype v1.4.9 // indirect
+	github.com/elliotchance/orderedmap/v3 v3.1.0 // indirect
+	github.com/gabriel-vasile/mimetype v1.4.10 // indirect
 	github.com/gin-contrib/sse v1.1.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
@@ -30,6 +33,7 @@ require (
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/u2takey/go-utils v0.3.1 // indirect
 	github.com/ugorji/go/codec v1.3.0 // indirect
+	github.com/vektah/gqlparser/v2 v2.5.30 // indirect
 	golang.org/x/arch v0.20.0 // indirect
 	golang.org/x/text v0.28.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
@@ -44,14 +48,14 @@ require (
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-sqlite3 v1.14.32
-	github.com/petermattis/goid v0.0.0-20250813065127-a731cc31b4fe // indirect
+	github.com/petermattis/goid v0.0.0-20250904145737-900bdf8bb490 // indirect
 	github.com/rs/zerolog v1.34.0 // indirect
 	go.mau.fi/libsignal v0.2.0 // indirect
 	go.mau.fi/util v0.9.0 // indirect
-	go.mau.fi/whatsmeow v0.0.0-20250816112049-1b82e4b52df1
+	go.mau.fi/whatsmeow v0.0.0-20250905121447-8d6da61ecbfa
 	golang.org/x/crypto v0.41.0 // indirect
-	golang.org/x/exp v0.0.0-20250813145105-42675adae3e6 // indirect
+	golang.org/x/exp v0.0.0-20250819193227-8b4c13bb791b // indirect
 	golang.org/x/net v0.43.0 // indirect
 	golang.org/x/sys v0.35.0 // indirect
-	google.golang.org/protobuf v1.36.7
+	google.golang.org/protobuf v1.36.8
 )
