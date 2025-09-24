@@ -25,7 +25,7 @@ func NewHandlers(app *app.App) *Handlers {
 // AddSessionHandler handles creating a new WhatsApp session
 func (h *Handlers) AddSessionHandler(c *gin.Context) {
 	var req AddSessionRequest
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
