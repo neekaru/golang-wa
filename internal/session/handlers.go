@@ -180,7 +180,7 @@ func (h *Handlers) RestartHandler(c *gin.Context) {
 // LogoutHandler handles logging out a WhatsApp session
 func (h *Handlers) LogoutHandler(c *gin.Context) {
 	var req LogoutRequest
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
