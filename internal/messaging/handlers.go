@@ -24,7 +24,7 @@ func NewHandlers(app *app.App) *Handlers {
 // SendMessageHandler handles sending a text message
 func (h *Handlers) SendMessageHandler(c *gin.Context) {
 	var req SendMessageRequest
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
@@ -48,7 +48,7 @@ func (h *Handlers) SendMessageHandler(c *gin.Context) {
 // MarkReadHandler handles marking messages as read
 func (h *Handlers) MarkReadHandler(c *gin.Context) {
 	var req MarkReadRequest
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}

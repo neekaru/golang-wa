@@ -40,7 +40,7 @@ func (h *Handlers) SendVideoHandler(c *gin.Context) {
 // sendMediaHandler is a common handler for sending media
 func (h *Handlers) sendMediaHandler(c *gin.Context, mediaType string) {
 	var req SendMediaRequest
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
