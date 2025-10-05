@@ -24,7 +24,7 @@ func NewHandlers(app *app.App) *Handlers {
 // GetAllContactsHandler handles GET /contact - returns all contacts
 func (h *Handlers) GetAllContactsHandler(c *gin.Context) {
 	var req UserRequest
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request. Required: {\"user\": \"username\"}"})
 		return
 	}
@@ -56,7 +56,7 @@ func (h *Handlers) GetAllContactsHandler(c *gin.Context) {
 // GetSavedContactsHandler handles GET /contact/saved - returns only saved contacts
 func (h *Handlers) GetSavedContactsHandler(c *gin.Context) {
 	var req UserRequest
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request. Required: {\"user\": \"username\"}"})
 		return
 	}
@@ -88,7 +88,7 @@ func (h *Handlers) GetSavedContactsHandler(c *gin.Context) {
 // GetUnsavedContactsHandler handles GET /contact/unsaved - returns only unsaved contacts
 func (h *Handlers) GetUnsavedContactsHandler(c *gin.Context) {
 	var req UserRequest
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request. Required: {\"user\": \"username\"}"})
 		return
 	}
@@ -120,7 +120,7 @@ func (h *Handlers) GetUnsavedContactsHandler(c *gin.Context) {
 // RefreshContactsHandler handles POST /contact/refresh - refreshes contact list from WhatsApp
 func (h *Handlers) RefreshContactsHandler(c *gin.Context) {
 	var req UserRequest
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request. Required: {\"user\": \"username\"}"})
 		return
 	}
