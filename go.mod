@@ -1,6 +1,6 @@
 module github.com/neekaru/whatsappgo-bot
 
-go 1.25.0
+go 1.25.3
 
 require (
 	github.com/gin-contrib/cors v1.7.6
@@ -20,7 +20,7 @@ require (
 	github.com/gin-contrib/sse v1.1.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
-	github.com/go-playground/validator/v10 v10.27.0 // indirect
+	github.com/go-playground/validator/v10 v10.28.0 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/goccy/go-yaml v1.18.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
@@ -36,11 +36,11 @@ require (
 	github.com/u2takey/go-utils v0.3.1 // indirect
 	github.com/ugorji/go/codec v1.3.0 // indirect
 	github.com/vektah/gqlparser/v2 v2.5.30 // indirect
-	golang.org/x/arch v0.21.0 // indirect
-	golang.org/x/mod v0.28.0 // indirect
+	golang.org/x/arch v0.22.0 // indirect
+	golang.org/x/mod v0.29.0 // indirect
 	golang.org/x/sync v0.17.0 // indirect
-	golang.org/x/text v0.29.0 // indirect
-	golang.org/x/tools v0.37.0 // indirect
+	golang.org/x/text v0.30.0 // indirect
+	golang.org/x/tools v0.38.0 // indirect
 )
 
 require (
@@ -54,12 +54,12 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.32
 	github.com/petermattis/goid v0.0.0-20250904145737-900bdf8bb490 // indirect
 	github.com/rs/zerolog v1.34.0 // indirect
-	go.mau.fi/libsignal v0.2.1-0.20251004173110-6e0a3f2435ed // indirect
-	go.mau.fi/util v0.9.1 // indirect
-	go.mau.fi/whatsmeow v0.0.0-20251004173248-359e39387ad3
-	golang.org/x/crypto v0.42.0 // indirect
-	golang.org/x/exp v0.0.0-20251002181428-27f1f14c8bb9 // indirect
-	golang.org/x/net v0.44.0 // indirect
-	golang.org/x/sys v0.36.0 // indirect
+	go.mau.fi/libsignal v0.2.1 // indirect
+	go.mau.fi/util v0.9.2 // indirect
+	go.mau.fi/whatsmeow v0.0.0-20251016095441-02c50743e601
+	golang.org/x/crypto v0.43.0 // indirect
+	golang.org/x/exp v0.0.0-20251017212417-90e834f514db // indirect
+	golang.org/x/net v0.46.0 // indirect
+	golang.org/x/sys v0.37.0 // indirect
 	google.golang.org/protobuf v1.36.10
 )
