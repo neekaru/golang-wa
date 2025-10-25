@@ -57,9 +57,9 @@ require (
 	github.com/rs/zerolog v1.34.0 // indirect
 	go.mau.fi/libsignal v0.2.1 // indirect
 	go.mau.fi/util v0.9.2 // indirect
-	go.mau.fi/whatsmeow v0.0.0-20251016095441-02c50743e601
+	go.mau.fi/whatsmeow v0.0.0-20251024191251-088fa33fb87f
 	golang.org/x/crypto v0.43.0 // indirect
-	golang.org/x/exp v0.0.0-20251017212417-90e834f514db // indirect
+	golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546 // indirect
 	golang.org/x/net v0.46.0 // indirect
 	golang.org/x/sys v0.37.0 // indirect
 	google.golang.org/protobuf v1.36.10
