@@ -169,10 +169,10 @@ func (s *Service) MarkRead(user string, messageIDs []string, fromJID, toJID stri
 	toJIDObj := types.JID{User: toJID, Server: "s.whatsapp.net"}
 
 	// Use a context with a timeout for the MarkRead operation
-	_, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	err := sess.Client.MarkRead(typedMessageIDs, time.Now(), fromJIDObj, toJIDObj, types.ReceiptTypeRead)
+	err := sess.Client.MarkRead(ctx, typedMessageIDs, time.Now(), toJIDObj, fromJIDObj, types.ReceiptTypeRead)
 	if err != nil {
 		return fmt.Errorf("failed to mark as read: %v", err)
 	}
