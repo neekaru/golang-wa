@@ -36,6 +36,8 @@ func NewService(app *app.App) *Service {
 
 // SendMedia sends media (image, video, file) to a WhatsApp contact
 func (s *Service) SendMedia(user, phoneNumber, mediaType, mediaData, mediaURL, caption, fileName string) (string, error) {
+	const sendDelay = 6 * time.Second
+
 	// Check if phoneNumber is empty or only whitespace
 	if strings.TrimSpace(phoneNumber) == "" {
 		s.app.Logger.Printf("Warning: phone number is empty for user %s", user)
@@ -70,6 +72,9 @@ func (s *Service) SendMedia(user, phoneNumber, mediaType, mediaData, mediaURL, c
 	if !exists {
 		return "", fmt.Errorf("session not found")
 	}
+
+	s.app.SendLimiter.Wait(user, sendDelay)
+
 	// Ensure client is connected before sending
 	if !sess.Client.IsConnected() {
 		err := sess.Client.Connect()

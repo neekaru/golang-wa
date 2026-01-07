@@ -30,6 +30,8 @@ func NewService(app *app.App) *Service {
 
 // SendMessage sends a text message to a WhatsApp contact
 func (s *Service) SendMessage(user, phoneNumber, message string) error {
+	const sendDelay = 6 * time.Second
+
 	// Check if phoneNumber is empty or only whitespace
 	if strings.TrimSpace(phoneNumber) == "" {
 		s.app.Logger.Printf("Warning: phone number is empty for user %s", user)
@@ -60,6 +62,9 @@ func (s *Service) SendMessage(user, phoneNumber, message string) error {
 		s.app.Logger.Printf("Warning: phone number is invalid for user %s: %s", user, phoneNumber)
 		return fmt.Errorf("phone number is invalid, must be all digits or start with '+' followed by digits")
 	}
+
+	s.app.SendLimiter.Wait(user, sendDelay)
+
 	return s.sendMessageWithRetry(user, phoneNumber, message)
 }
 

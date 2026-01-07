@@ -30,6 +30,42 @@ type App struct {
 
 	Logger    *log.Logger
 	StartTime time.Time // Track startup time for health checks
+
+	SendLimiter *SendRateLimiter
+}
+
+// SendRateLimiter enforces a minimum delay between send operations per user.
+type SendRateLimiter struct {
+	mu          sync.Mutex
+	nextAllowed map[string]time.Time
+}
+
+// NewSendRateLimiter creates a new SendRateLimiter.
+func NewSendRateLimiter() *SendRateLimiter {
+	return &SendRateLimiter{
+		nextAllowed: make(map[string]time.Time),
+	}
+}
+
+// Wait blocks until the caller is allowed to send for the given user.
+func (l *SendRateLimiter) Wait(user string, delay time.Duration) {
+	if delay <= 0 {
+		return
+	}
+
+	now := time.Now()
+
+	l.mu.Lock()
+	next := l.nextAllowed[user]
+	if next.After(now) {
+		l.nextAllowed[user] = next.Add(delay)
+		l.mu.Unlock()
+		time.Sleep(time.Until(next))
+		return
+	}
+
+	l.nextAllowed[user] = now.Add(delay)
+	l.mu.Unlock()
 }
 
 // NewApp creates a new App instance with initialized resources
@@ -41,6 +77,7 @@ func NewApp(logger *log.Logger) *App {
 		Sessions:  make(map[string]*Session),
 		Logger:    logger,
 		StartTime: time.Now(),
+		SendLimiter: NewSendRateLimiter(),
 	}
 }
 
