@@ -31,6 +31,20 @@ func (h *Handlers) SendMessageHandler(c *gin.Context) {
 
 	err := h.service.SendMessage(req.User, req.PhoneNumber, req.Message)
 	if err != nil {
+		if dupErr, ok := isDuplicateMessageError(err); ok {
+			retrySeconds := int(dupErr.RetryAfter.Seconds())
+			if retrySeconds < 1 {
+				retrySeconds = 1
+			}
+			h.app.Logger.Printf("Message cooldown active for user %s to %s", req.User, req.PhoneNumber)
+			c.JSON(http.StatusOK, gin.H{
+				"warn":                "Message cooldown active",
+				"details":             dupErr.Error(),
+				"retry_after_seconds": retrySeconds,
+			})
+			return
+		}
+
 		// Log the detailed error
 		h.app.Logger.Printf("Message send error: %v", err)
 

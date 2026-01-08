@@ -31,6 +31,10 @@ func NewService(app *app.App) *Service {
 // SendMessage sends a text message to a WhatsApp contact
 func (s *Service) SendMessage(user, phoneNumber, message string) error {
 	const sendDelay = 6 * time.Second
+	const duplicateWindow = 15 * time.Second
+	const duplicateMax = 3
+	const duplicateMessageWindow = 15 * time.Second
+	const duplicateMessageMax = 1
 
 	// Check if phoneNumber is empty or only whitespace
 	if strings.TrimSpace(phoneNumber) == "" {
@@ -61,6 +65,18 @@ func (s *Service) SendMessage(user, phoneNumber, message string) error {
 	if !valid {
 		s.app.Logger.Printf("Warning: phone number is invalid for user %s: %s", user, phoneNumber)
 		return fmt.Errorf("phone number is invalid, must be all digits or start with '+' followed by digits")
+	}
+
+	dupKey := fmt.Sprintf("num|%s|%s", user, phoneNumber)
+	allowed, retryAfter := s.app.DuplicateLimiter.Allow(dupKey, duplicateMax, duplicateWindow)
+	if !allowed {
+		return &DuplicateMessageError{RetryAfter: retryAfter}
+	}
+
+	msgKey := fmt.Sprintf("msg|%s|%s|%s", user, phoneNumber, message)
+	msgAllowed, msgRetryAfter := s.app.DuplicateLimiter.Allow(msgKey, duplicateMessageMax, duplicateMessageWindow)
+	if !msgAllowed {
+		return &DuplicateMessageError{RetryAfter: msgRetryAfter}
 	}
 
 	s.app.SendLimiter.Wait(user, sendDelay)
