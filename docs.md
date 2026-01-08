@@ -121,6 +121,34 @@ curl -X POST http://localhost:8080/send \
   }'
 ```
 
+**Cooldown (per recipient)**
+To reduce spam, each `user` is limited to at most 3 sends to the same
+`phone_number` within 15 seconds. If the limit is exceeded, the message is not
+sent and the API returns a warning:
+
+```json
+{
+  "warn": "Message cooldown active",
+  "details": "message cooldown active, retry after 15 seconds",
+  "retry_after_seconds": 15
+}
+```
+
+and 
+
+```json
+{
+	"details": "message cooldown active, retry after 3 seconds",
+	"retry_after_seconds": 3,
+	"warn": "Message cooldown active"
+}
+```
+
+**Duplicate message cooldown (per recipient + message)**
+Identical messages to the same `phone_number` are also rate-limited to 1 send
+per 15 seconds. When blocked, the message is not sent and the API returns the
+same warning response with the remaining cooldown.
+
 ### 2. Send Image
 Send an image with optional caption. The image can be provided as base64 encoded data or a URL.
 
@@ -313,6 +341,15 @@ All endpoints return JSON responses with consistent formats:
 }
 ```
 
+### Warning Response
+```json
+{
+    "warn": "Warning message",
+    "details": "warning details",
+    "retry_after_seconds": 15
+}
+```
+
 ### Status Response
 Many endpoints now include a detailed status object:
 ```json
@@ -422,3 +459,4 @@ curl -X POST http://localhost:8080/contact/refresh \
 8. The server supports graceful shutdown when receiving SIGINT or SIGTERM signals
 9. Connection issues are automatically handled with retry mechanisms
 10. Check the `needs_qr` field in status responses to determine if a QR code is needed
+
