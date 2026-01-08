@@ -32,6 +32,7 @@ type App struct {
 	StartTime time.Time // Track startup time for health checks
 
 	SendLimiter *SendRateLimiter
+	DuplicateLimiter *DuplicateMessageLimiter
 }
 
 // SendRateLimiter enforces a minimum delay between send operations per user.
@@ -68,6 +69,55 @@ func (l *SendRateLimiter) Wait(user string, delay time.Duration) {
 	l.mu.Unlock()
 }
 
+// DuplicateMessageLimiter blocks repeated messages per key for a fixed window.
+type DuplicateMessageLimiter struct {
+	mu      sync.Mutex
+	entries map[string]duplicateEntry
+}
+
+type duplicateEntry struct {
+	windowStart time.Time
+	count       int
+}
+
+// NewDuplicateMessageLimiter creates a new DuplicateMessageLimiter.
+func NewDuplicateMessageLimiter() *DuplicateMessageLimiter {
+	return &DuplicateMessageLimiter{
+		entries: make(map[string]duplicateEntry),
+	}
+}
+
+// Allow returns whether a message is allowed based on max sends in a window.
+func (l *DuplicateMessageLimiter) Allow(key string, max int, window time.Duration) (bool, time.Duration) {
+	if max <= 0 || window <= 0 {
+		return true, 0
+	}
+
+	now := time.Now()
+
+	l.mu.Lock()
+	entry := l.entries[key]
+	if entry.windowStart.IsZero() || now.Sub(entry.windowStart) > window {
+		entry.windowStart = now
+		entry.count = 0
+	}
+
+	if entry.count >= max {
+		retryAfter := window - now.Sub(entry.windowStart)
+		if retryAfter < 0 {
+			retryAfter = 0
+		}
+		l.mu.Unlock()
+		return false, retryAfter
+	}
+
+	entry.count++
+	l.entries[key] = entry
+	l.mu.Unlock()
+
+	return true, 0
+}
+
 // NewApp creates a new App instance with initialized resources
 func NewApp(logger *log.Logger) *App {
 	// Initialize the ClientManager singleton
@@ -78,6 +128,7 @@ func NewApp(logger *log.Logger) *App {
 		Logger:    logger,
 		StartTime: time.Now(),
 		SendLimiter: NewSendRateLimiter(),
+		DuplicateLimiter: NewDuplicateMessageLimiter(),
 	}
 }
 
