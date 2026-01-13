@@ -85,13 +85,18 @@ func (s *Service) GenerateQRCode(user string) (string, error) {
 
 		// Add connection event handler
 		client.AddEventHandler(func(evt interface{}) {
-			switch evt.(type) {
+			switch e := evt.(type) {
 			case *events.Connected:
 				sess.IsLoggedIn = true
 				s.app.Logger.Printf("User %s connection state changed to: connected", user)
 			case *events.LoggedOut:
 				sess.IsLoggedIn = false
-				s.app.Logger.Printf("User %s connection state changed to: logged out", user)
+				// Inspect logout reason when available
+				if e.OnConnect {
+					s.app.Logger.Printf("User %s logged out on connect; reason=%s", user, e.Reason.String())
+				} else {
+					s.app.Logger.Printf("User %s logged out (stream error). Reason not provided in stream:error", user)
+				}
 			}
 		})
 
