@@ -148,11 +148,18 @@ func (c *Client) handleWhatsmeowEvent(evt interface{}) {
 		c.manager.logger.Printf("Client %s connected and logged in", c.ID)
 
 	case *events.LoggedOut:
+		// 'e' already has type *events.LoggedOut inside this case of the type switch.
+		lo := e
+		if lo.OnConnect {
+			c.manager.logger.Printf("Client %s logged out on connect; reason=%s", c.ID, lo.Reason.String())
+		} else {
+			c.manager.logger.Printf("Client %s logged out (stream error). Reason not provided in stream:error", c.ID)
+		}
+
 		c.mu.Lock()
 		c.Status = StatusLoggedOut
 		c.mu.Unlock()
 		c.manager.DispatchEvent(NewStatusEvent(c.ID, c.Status))
-		c.manager.logger.Printf("Client %s logged out", c.ID)
 
 	case *events.Disconnected:
 		c.mu.Lock()
