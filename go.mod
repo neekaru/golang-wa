@@ -60,3 +60,5 @@ require (
 	golang.org/x/sys v0.40.0 // indirect
 	google.golang.org/protobuf v1.36.11
 )
+
+replace go.mau.fi/whatsmeow => github.com/neekaru/whatsmeow v0.0.0-20260201012725-ffd424dd5108
