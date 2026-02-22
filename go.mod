@@ -36,13 +36,13 @@ require (
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/u2takey/go-utils v0.3.1 // indirect
 	github.com/ugorji/go/codec v1.3.1 // indirect
-	github.com/vektah/gqlparser/v2 v2.5.31 // indirect
+	github.com/vektah/gqlparser/v2 v2.5.32 // indirect
 	golang.org/x/arch v0.24.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
 )
 
 require (
-	filippo.io/edwards25519 v1.1.0 // indirect
+	filippo.io/edwards25519 v1.2.0 // indirect
 	github.com/gin-gonic/gin v1.11.0
 	github.com/golang/protobuf v1.5.4
 	github.com/google/uuid v1.6.0 // indirect
@@ -53,9 +53,9 @@ require (
 	github.com/rs/zerolog v1.34.0 // indirect
 	go.mau.fi/libsignal v0.2.1 // indirect
 	go.mau.fi/util v0.9.6 // indirect
-	go.mau.fi/whatsmeow v0.0.0-20260216124546-34b971e686b6
+	go.mau.fi/whatsmeow v0.0.0-20260219150138-7ae702b1eed4
 	golang.org/x/crypto v0.48.0 // indirect
-	golang.org/x/exp v0.0.0-20260212183809-81e46e3db34a // indirect
+	golang.org/x/exp v0.0.0-20260218203240-3dfff04db8fa // indirect
 	golang.org/x/net v0.50.0 // indirect
 	golang.org/x/sys v0.41.0 // indirect
 	google.golang.org/protobuf v1.36.11
