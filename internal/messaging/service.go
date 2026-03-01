@@ -3,6 +3,7 @@ package messaging
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"strings"
 	"time"
 
@@ -28,9 +29,66 @@ func NewService(app *app.App) *Service {
 	}
 }
 
+// humanDelay generates a random delay between min and max milliseconds
+func humanDelay(minMs, maxMs int) time.Duration {
+	if maxMs <= minMs {
+		return time.Duration(minMs) * time.Millisecond
+	}
+	delay := minMs + rand.Intn(maxMs-minMs+1)
+	return time.Duration(delay) * time.Millisecond
+}
+
+// randomSendDelay returns a random delay between 4 and 10 seconds
+// instead of a fixed delay, to mimic human behavior
+func randomSendDelay() time.Duration {
+	return humanDelay(4000, 10000)
+}
+
+// simulateTyping simulates human typing behavior before sending a message.
+// This sends online presence, typing indicator, waits proportionally to
+// message length, then stops typing — mimicking natural human interaction.
+func (s *Service) simulateTyping(client *whatsmeow.Client, recipient types.JID, messageLength int) {
+	// 1. Set online presence so the recipient sees us as "online"
+	if err := client.SendPresence(context.Background(), types.PresenceAvailable); err != nil {
+		s.app.Logger.Printf("Warning: failed to send online presence: %v", err)
+	}
+
+	// 2. Pre-typing delay (humans don't start typing immediately)
+	time.Sleep(humanDelay(500, 1500))
+
+	// 3. Send "composing" (typing) indicator
+	if err := client.SendChatPresence(context.Background(), recipient, types.ChatPresenceComposing, types.ChatPresenceMediaText); err != nil {
+		s.app.Logger.Printf("Warning: failed to send composing presence: %v", err)
+	}
+
+	// 4. Typing duration proportional to message length
+	//    Average human types ~40 chars/sec on phone, so ~25ms per char
+	//    Minimum 1.5s, maximum 5s to avoid excessive waits
+	typingMs := messageLength * 25
+	if typingMs < 1500 {
+		typingMs = 1500
+	}
+	if typingMs > 5000 {
+		typingMs = 5000
+	}
+	// Add ±30% variation to make timing less predictable
+	variation := typingMs * 30 / 100
+	if variation > 0 {
+		typingMs = typingMs - variation + rand.Intn(2*variation+1)
+	}
+	time.Sleep(time.Duration(typingMs) * time.Millisecond)
+
+	// 5. Send "paused" (stopped typing) indicator
+	if err := client.SendChatPresence(context.Background(), recipient, types.ChatPresencePaused, types.ChatPresenceMediaText); err != nil {
+		s.app.Logger.Printf("Warning: failed to send paused presence: %v", err)
+	}
+
+	// 6. Small natural pause before the message actually sends
+	time.Sleep(humanDelay(200, 500))
+}
+
 // SendMessage sends a text message to a WhatsApp contact
 func (s *Service) SendMessage(user, phoneNumber, message string) error {
-	const sendDelay = 6 * time.Second
 	const duplicateWindow = 15 * time.Second
 	const duplicateMax = 3
 	const duplicateMessageWindow = 15 * time.Second
@@ -79,7 +137,8 @@ func (s *Service) SendMessage(user, phoneNumber, message string) error {
 		return &DuplicateMessageError{RetryAfter: msgRetryAfter}
 	}
 
-	s.app.SendLimiter.Wait(user, sendDelay)
+	// Use random delay instead of fixed delay to avoid bot detection
+	s.app.SendLimiter.Wait(user, randomSendDelay())
 
 	return s.sendMessageWithRetry(user, phoneNumber, message)
 }
@@ -113,6 +172,9 @@ func (s *Service) sendMessageWithRetry(user, phoneNumber, message string) error 
 			User:   phoneNumber,
 			Server: "s.whatsapp.net",
 		}
+
+		// === ANTI-BAN: Simulate human typing behavior ===
+		s.simulateTyping(sess.Client, recipient, len(message))
 
 		// Create message and send
 		msg := &waE2E.Message{
@@ -166,6 +228,13 @@ func (s *Service) sendMessageWithRetry(user, phoneNumber, message string) error 
 
 		// If we get here, the message was sent successfully
 		s.app.Logger.Printf("Message sent successfully to %s from user %s", recipient.String(), user)
+
+		// Post-send: set presence back to unavailable after a random delay
+		go func() {
+			time.Sleep(humanDelay(2000, 5000))
+			_ = sess.Client.SendPresence(context.Background(), types.PresenceUnavailable)
+		}()
+
 		return nil
 	}
 
