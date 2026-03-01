@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"math/rand"
 	"mime"
 	"net/http"
 	"net/url"
@@ -34,9 +35,48 @@ func NewService(app *app.App) *Service {
 	}
 }
 
+// humanDelay generates a random delay between min and max milliseconds
+func humanDelay(minMs, maxMs int) time.Duration {
+	if maxMs <= minMs {
+		return time.Duration(minMs) * time.Millisecond
+	}
+	delay := minMs + rand.Intn(maxMs-minMs+1)
+	return time.Duration(delay) * time.Millisecond
+}
+
+// simulateMediaAttach simulates the human behavior of attaching and sending media.
+// This includes going online, showing a composing indicator (as if selecting/attaching
+// a file), then stopping before the actual send.
+func (s *Service) simulateMediaAttach(client *whatsmeow.Client, recipient types.JID) {
+	// 1. Set online presence
+	if err := client.SendPresence(context.Background(), types.PresenceAvailable); err != nil {
+		s.app.Logger.Printf("Warning: failed to send online presence: %v", err)
+	}
+
+	// 2. Pre-attach delay (user is browsing files, selecting media)
+	time.Sleep(humanDelay(1000, 3000))
+
+	// 3. Send composing indicator
+	if err := client.SendChatPresence(context.Background(), recipient, types.ChatPresenceComposing, types.ChatPresenceMediaText); err != nil {
+		s.app.Logger.Printf("Warning: failed to send composing presence: %v", err)
+	}
+
+	// 4. Simulate time to attach/preview media (2-6 seconds)
+	time.Sleep(humanDelay(2000, 6000))
+
+	// 5. Stop composing
+	if err := client.SendChatPresence(context.Background(), recipient, types.ChatPresencePaused, types.ChatPresenceMediaText); err != nil {
+		s.app.Logger.Printf("Warning: failed to send paused presence: %v", err)
+	}
+
+	// 6. Small natural pause before sending
+	time.Sleep(humanDelay(200, 500))
+}
+
 // SendMedia sends media (image, video, file) to a WhatsApp contact
 func (s *Service) SendMedia(user, phoneNumber, mediaType, mediaData, mediaURL, caption, fileName string) (string, error) {
-	const sendDelay = 6 * time.Second
+	// Use random delay instead of fixed delay to avoid bot detection
+	sendDelay := humanDelay(4000, 10000)
 
 	// Check if phoneNumber is empty or only whitespace
 	if strings.TrimSpace(phoneNumber) == "" {
@@ -241,9 +281,13 @@ func (s *Service) SendMedia(user, phoneNumber, mediaType, mediaData, mediaURL, c
 		}
 	}
 
+	// Use GenerateMessageID() instead of predictable UnixNano-based IDs
 	opts := whatsmeow.SendRequestExtra{
-		ID: types.MessageID(fmt.Sprintf("%d", time.Now().UnixNano())),
+		ID: whatsmeow.GenerateMessageID(),
 	}
+
+	// === ANTI-BAN: Simulate human behavior before sending media ===
+	s.simulateMediaAttach(sess.Client, recipient)
 
 	// Use a context with a timeout for the SendMessage operation
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
@@ -289,6 +333,12 @@ func (s *Service) SendMedia(user, phoneNumber, mediaType, mediaData, mediaURL, c
 
 	// Log successful message send
 	s.app.Logger.Printf("Media sent successfully to %s from user %s", recipient.String(), user)
+
+	// Post-send: set presence back to unavailable after a random delay
+	go func() {
+		time.Sleep(humanDelay(2000, 5000))
+		_ = sess.Client.SendPresence(context.Background(), types.PresenceUnavailable)
+	}()
 
 	return detectedFileName, nil
 }
