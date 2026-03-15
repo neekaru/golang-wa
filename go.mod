@@ -22,7 +22,7 @@ require (
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.30.1 // indirect
-	github.com/goccy/go-json v0.10.5 // indirect
+	github.com/goccy/go-json v0.10.6 // indirect
 	github.com/goccy/go-yaml v1.19.2 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
@@ -38,8 +38,8 @@ require (
 	github.com/ugorji/go/codec v1.3.1 // indirect
 	github.com/vektah/gqlparser/v2 v2.5.32 // indirect
 	go.mongodb.org/mongo-driver/v2 v2.5.0 // indirect
-	golang.org/x/arch v0.24.0 // indirect
-	golang.org/x/text v0.34.0 // indirect
+	golang.org/x/arch v0.25.0 // indirect
+	golang.org/x/text v0.35.0 // indirect
 )
 
 require (
@@ -54,10 +54,10 @@ require (
 	github.com/rs/zerolog v1.34.0 // indirect
 	go.mau.fi/libsignal v0.2.1 // indirect
 	go.mau.fi/util v0.9.6 // indirect
-	go.mau.fi/whatsmeow v0.0.0-20260227112304-c9652e4448a2
-	golang.org/x/crypto v0.48.0 // indirect
-	golang.org/x/exp v0.0.0-20260218203240-3dfff04db8fa // indirect
-	golang.org/x/net v0.51.0 // indirect
-	golang.org/x/sys v0.41.0 // indirect
+	go.mau.fi/whatsmeow v0.0.0-20260305215846-fc65416c22c4
+	golang.org/x/crypto v0.49.0 // indirect
+	golang.org/x/exp v0.0.0-20260312153236-7ab1446f8b90 // indirect
+	golang.org/x/net v0.52.0 // indirect
+	golang.org/x/sys v0.42.0 // indirect
 	google.golang.org/protobuf v1.36.11
 )
