@@ -128,6 +128,15 @@ func (s *Service) SendMedia(user, phoneNumber, mediaType, mediaData, mediaURL, c
 		Server: "s.whatsapp.net",
 	}
 
+	// === ANTI-BAN: Ensure recipient is in contacts ===
+	contactInfo, err := sess.Client.Store.Contacts.GetContact(context.Background(), recipient)
+	if err != nil {
+		s.app.Logger.Printf("Failed to get contact info for %s: %v", recipient.String(), err)
+	} else if !contactInfo.Found {
+		s.app.Logger.Printf("Anti-ban protection: Refusing to send media to %s as they are not in the contact list", recipient.String())
+		return "", fmt.Errorf("recipient %s is not in your contact list. Media sending aborted to avoid ban", phoneNumber)
+	}
+
 	var media []byte
 	var mimeType string
 	var detectedFileName string
