@@ -8,6 +8,19 @@ import (
 	"github.com/neekaru/whatsappgo-bot/internal/app"
 )
 
+func contactDisplayName(contactName, pushName, businessName string) string {
+	switch {
+	case contactName != "":
+		return contactName
+	case pushName != "":
+		return pushName
+	case businessName != "":
+		return businessName
+	default:
+		return ""
+	}
+}
+
 // Service handles contact-related operations
 type Service struct {
 	app *app.App
@@ -48,15 +61,13 @@ func (s *Service) GetAllContacts(user string) ([]Contact, error) {
 		// Parse phone number from JID
 		phoneNumber := strings.Split(jid.User, "@")[0]
 
-		// Determine if contact is saved (has a name)
-		// In whatsmeow, contacts with names are considered "saved"
-		// Use PushName as the display name since it's available in ContactInfo
-		isSaved := contact.PushName != ""
+		displayName := contactDisplayName(contact.FullName, contact.PushName, contact.BusinessName)
+		isSaved := displayName != ""
 
 		contactInfo := Contact{
 			JID:          jid.String(),
 			PhoneNumber:  phoneNumber,
-			Name:         contact.PushName, // Use PushName as the contact name
+			Name:         displayName,
 			PushName:     contact.PushName,
 			BusinessName: contact.BusinessName,
 			IsSaved:      isSaved,
