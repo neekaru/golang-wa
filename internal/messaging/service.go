@@ -173,15 +173,6 @@ func (s *Service) sendMessageWithRetry(user, phoneNumber, message string) error 
 			Server: "s.whatsapp.net",
 		}
 
-		// === ANTI-BAN: Ensure recipient is in contacts ===
-		contactInfo, err := sess.Client.Store.Contacts.GetContact(context.Background(), recipient)
-		if err != nil {
-			s.app.Logger.Printf("Failed to get contact info for %s: %v", recipient.String(), err)
-		} else if !contactInfo.Found {
-			s.app.Logger.Printf("Anti-ban protection: Refusing to send message to %s as they are not in the contact list", recipient.String())
-			return fmt.Errorf("recipient %s is not in your contact list. Message sending aborted to avoid ban", phoneNumber)
-		}
-
 		// === ANTI-BAN: Simulate human typing behavior ===
 		s.simulateTyping(sess.Client, recipient, len(message))
 
@@ -198,7 +189,7 @@ func (s *Service) sendMessageWithRetry(user, phoneNumber, message string) error 
 		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 
 		// Send the message
-		_, err = sess.Client.SendMessage(ctx, recipient, msg, opts)
+		_, err := sess.Client.SendMessage(ctx, recipient, msg, opts)
 		cancel() // Cancel the context after sending
 
 		if err != nil {
