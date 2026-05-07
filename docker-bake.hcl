@@ -44,7 +44,26 @@ target "latest" {
   ]
 }
 
+// Latest nginx build (from nginx-local branch)
+target "latest-nginx" {
+  inherits = ["docker-metadata-action"]
+  tags = [
+    "${REGISTRY}/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest-nginx"
+  ]
+  cache-from = [
+    "type=gha,scope=latest-nginx"
+  ]
+  cache-to = [
+    "type=gha,mode=max,scope=latest-nginx"
+  ]
+}
+
 // Default group includes both targets
 group "default" {
   targets = ["main", "latest"]
+}
+
+// Nginx group for nginx builds
+group "nginx" {
+  targets = ["latest-nginx"]
 } 

@@ -16,7 +16,7 @@ type Config struct {
 // NewConfig creates a new configuration with default values
 func NewConfig() *Config {
 	return &Config{
-		ServerPort: "8080",
+		ServerPort: "3000",
 		DataDir:    "data",
 	}
 }

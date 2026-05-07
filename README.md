@@ -10,9 +10,17 @@ A WhatsApp API built with Go using the [whatsmeow](https://github.com/tulir/what
 - Mark messages as read
 - Session status checking and management
 
-## Docker Setup
+## Deployment Options
 
-This project includes a Docker setup with Caddy as a reverse proxy for improved security and performance.
+This project supports multiple deployment methods:
+
+### 1. Local Deployment with Nginx (Recommended for Production)
+
+For production deployments on a local server with nginx as reverse proxy, see [NGINX-SETUP.md](NGINX-SETUP.md).
+
+### 2. Docker Setup
+
+For development or containerized deployments:
 
 ### Quick Start with Docker Hub Image
 
@@ -30,7 +38,7 @@ nano .env
 docker-compose up -d
 
 # Access the API
-curl http://localhost/
+curl http://localhost:8080/
 # Should return: {"msg":"it works"}
 ```
 
@@ -41,16 +49,12 @@ curl http://localhost/
 | DOCKER_USERNAME | Your Docker Hub username | yourusername |
 | TAG | Docker image tag to use | latest |
 | API_PORT | Port for the WhatsApp API | 8080 |
-| HTTP_PORT | HTTP port for Caddy | 80 |
-| HTTPS_PORT | HTTPS port for Caddy | 443 |
-| DATA_DIR | Directory for WhatsApp data | ./whatsmeow-data |
-| TZ | Container timezone | Asia/Jakarta |
+| DATA_DIR | Directory for WhatsApp data | ./data |
+| TZ | Container timezone | UTC |
 
 ### Health Checks
 
-The setup includes health checks for both services:
-- WhatsApp API: Checks the API endpoint every 30 seconds
-- Caddy: Verifies Caddy is running every 30 seconds
+The Docker setup includes health checks for the WhatsApp API service that checks the API endpoint every 30 seconds.
 
 ## Docker Images
 

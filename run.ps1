@@ -35,14 +35,8 @@ function Print-Usage {
     Write-Host "logs" -ForegroundColor $green -NoNewline
     Write-Host "       - Show logs for all containers"
     Write-Host "  " -NoNewline
-    Write-Host "logs caddy" -ForegroundColor $green -NoNewline
-    Write-Host " - Show logs for the Caddy container"
-    Write-Host "  " -NoNewline
     Write-Host "logs api" -ForegroundColor $green -NoNewline
-    Write-Host "   - Show logs for the WhatsApp API container"
-    Write-Host "  " -NoNewline
-    Write-Host "format-caddy" -ForegroundColor $green -NoNewline
-    Write-Host " - Format the Caddyfile and restart Caddy"
+    Write-Host " - Show logs for the WhatsApp API container"
     Write-Host "  " -NoNewline
     Write-Host "status" -ForegroundColor $green -NoNewline
     Write-Host "     - Check the status of all containers"
@@ -148,9 +142,6 @@ function Show-Logs {
         Write-Host "Showing logs for all containers..." -ForegroundColor $blue
         docker compose logs --tail=100 -f
     }
-    elseif ($Container -eq "caddy") {
-        Write-Host "Showing logs for Caddy container..." -ForegroundColor $blue
-        docker compose logs --tail=100 -f caddy
     }
     elseif ($Container -eq "api") {
         Write-Host "Showing logs for WhatsApp API container..." -ForegroundColor $blue
@@ -162,35 +153,6 @@ function Show-Logs {
     }
 }
 
-# Format Caddyfile
-function Format-Caddyfile {
-    Write-Host "Formatting Caddyfile..." -ForegroundColor $blue
-    
-    # Get current path for mounting
-    $currentPath = (Get-Location).Path
-    $mountPath = $currentPath -replace "\\", "/"
-    
-    # Format the Caddyfile
-    docker run --rm -v "${mountPath}/Caddyfile:/etc/caddy/Caddyfile" caddy:2.7-alpine caddy fmt --overwrite /etc/caddy/Caddyfile
-    
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "Caddyfile formatted successfully" -ForegroundColor $green
-        
-        # Restart Caddy to apply changes
-        Write-Host "Restarting Caddy container..." -ForegroundColor $blue
-        docker compose restart caddy
-        
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host "Caddy container restarted successfully" -ForegroundColor $green
-        }
-        else {
-            Write-Host "Failed to restart Caddy container" -ForegroundColor $red
-        }
-    }
-    else {
-        Write-Host "Failed to format Caddyfile" -ForegroundColor $red
-    }
-}
 
 # Show container status
 function Show-Status {
@@ -395,9 +357,6 @@ function Main {
         }
         "logs" {
             Show-Logs -Container $SubCommand
-        }
-        "format-caddy" {
-            Format-Caddyfile
         }
         "status" {
             Show-Status
