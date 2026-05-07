@@ -68,17 +68,14 @@ func (s *Service) simulateTyping(client *whatsmeow.Client, recipient types.JID, 
 	if typingMs < 1500 {
 		typingMs = 1500
 	}
-
 	if typingMs > 5000 {
 		typingMs = 5000
 	}
-
 	// Add ±30% variation to make timing less predictable
 	variation := typingMs * 30 / 100
 	if variation > 0 {
 		typingMs = typingMs - variation + rand.Intn(2*variation+1)
 	}
-
 	time.Sleep(time.Duration(typingMs) * time.Millisecond)
 
 	// 5. Send "paused" (stopped typing) indicator
@@ -185,7 +182,7 @@ func (s *Service) sendMessageWithRetry(user, phoneNumber, message string) error 
 		}
 
 		opts := whatsmeow.SendRequestExtra{
-			ID: sess.Client.GenerateMessageID(),
+			ID: whatsmeow.GenerateMessageID(),
 		}
 
 		// Use a context with a longer timeout (60 seconds) for message sending operations

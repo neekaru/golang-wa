@@ -139,20 +139,8 @@ func (s *Service) SendMedia(user, phoneNumber, mediaType, mediaData, mediaURL, c
 
 	// Check if URL or base64 media is provided
 	if mediaURL != "" {
-
-		client := &http.Client{
-			Timeout: 30 * time.Second,
-			CheckRedirect: func(req *http.Request, via []*http.Request) error {
-				// Allow up to 10 redirects
-				if len(via) >= 10 {
-					return fmt.Errorf("too many redirects")
-				}
-				return nil
-			},
-		}
-
 		// Download media from URL
-		httpResp, err := client.Get(mediaURL)
+		httpResp, err := http.Get(mediaURL)
 		if err != nil {
 			return "", fmt.Errorf("failed to download media from URL")
 		}
@@ -162,20 +150,12 @@ func (s *Service) SendMedia(user, phoneNumber, mediaType, mediaData, mediaURL, c
 			return "", fmt.Errorf("failed to download media")
 		}
 
-		// add limiter for 100 mb download size
-		const maxDownloadSize = 100 << 20 // 100 MB
-		limitedReader := io.LimitReader(httpResp.Body, maxDownloadSize)
-		media, err = io.ReadAll(limitedReader)
+		media, err = io.ReadAll(httpResp.Body)
 		if err != nil {
 			return "", fmt.Errorf("failed to download media")
 		}
 
 		mimeType = httpResp.Header.Get("Content-Type")
-		if mimeType != "" {
-			if parsedMimeType, _, err := mime.ParseMediaType(mimeType); err == nil {
-				mimeType = parsedMimeType
-			}
-		}
 		if mimeType == "" {
 			mimeType = http.DetectContentType(media)
 		}
@@ -184,16 +164,6 @@ func (s *Service) SendMedia(user, phoneNumber, mediaType, mediaData, mediaURL, c
 		if detectedFileName == "" {
 			// Parse URL to extract filename
 			parsedURL, err := url.Parse(mediaURL)
-
-			// add validation for URL parsing
-			if err != nil {
-				s.app.Logger.Printf("Failed to parse media URL: %v", err)
-			}
-
-			if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
-				s.app.Logger.Printf("Invalid URL scheme for media: %s", parsedURL.Scheme)
-			}
-
 			if err == nil {
 				// Get the last part of the path
 				parts := strings.Split(parsedURL.Path, "/")
@@ -285,13 +255,13 @@ func (s *Service) SendMedia(user, phoneNumber, mediaType, mediaData, mediaURL, c
 		msg = waE2E.Message{
 			VideoMessage: &waE2E.VideoMessage{
 				Caption:       proto.String(caption),
-				URL:           proto.String(uploaded.URL),
-				DirectPath:    proto.String(uploaded.DirectPath),
+				URL:           &uploaded.URL,
+				DirectPath:    &uploaded.DirectPath,
 				MediaKey:      uploaded.MediaKey,
 				Mimetype:      proto.String(mimeType),
 				FileEncSHA256: uploaded.FileEncSHA256,
 				FileSHA256:    uploaded.FileSHA256,
-				FileLength:    proto.Uint64(uploaded.FileLength),
+				FileLength:    &uploaded.FileLength,
 				JPEGThumbnail: thumbnail,
 			},
 		}
@@ -311,9 +281,9 @@ func (s *Service) SendMedia(user, phoneNumber, mediaType, mediaData, mediaURL, c
 		}
 	}
 
-	// Generate message ID using client-scoped generator
+	// Use GenerateMessageID() instead of predictable UnixNano-based IDs
 	opts := whatsmeow.SendRequestExtra{
-		ID: sess.Client.GenerateMessageID(),
+		ID: whatsmeow.GenerateMessageID(),
 	}
 
 	// === ANTI-BAN: Simulate human behavior before sending media ===

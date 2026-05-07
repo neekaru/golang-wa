@@ -3,73 +3,16 @@ package logger
 import (
 	"fmt"
 	"io"
+	"log"
 	"os"
-	"strings"
-	"time"
 	"path/filepath"
-
-	"github.com/rs/zerolog"
 )
 
 // Global variable to track the rotating writer for proper cleanup
 var activeRotatingWriter *DailyRotatingWriter
 
-// Logger is a compatibility wrapper around zerolog that preserves
-// common stdlib-style logging methods used across the codebase.
-type Logger struct {
-	zlog   zerolog.Logger
-	writer io.Writer
-}
-
-// New creates a new compatibility logger.
-func New(writer io.Writer) *Logger {
-	base := zerolog.New(writer).With().Timestamp().Caller().Logger()
-	return &Logger{zlog: base, writer: writer}
-}
-
-// WithPrefix returns a child logger that includes a static component field.
-func (l *Logger) WithPrefix(component string) *Logger {
-	child := l.zlog.With().Str("component", component).Logger()
-	return &Logger{zlog: child, writer: l.writer}
-}
-
-// Printf logs with a level inferred from message content.
-func (l *Logger) Printf(format string, v ...interface{}) {
-	msg := fmt.Sprintf(format, v...)
-	l.logWithInferredLevel(msg)
-}
-
-// Println logs informational messages.
-func (l *Logger) Println(v ...interface{}) {
-	msg := strings.TrimSpace(fmt.Sprintln(v...))
-	l.zlog.Info().Msg(msg)
-}
-
-// Fatalf logs an error and exits with status code 1.
-func (l *Logger) Fatalf(format string, v ...interface{}) {
-	msg := fmt.Sprintf(format, v...)
-	l.zlog.Fatal().Msg(msg)
-}
-
-// Writer returns the underlying output writer.
-func (l *Logger) Writer() io.Writer {
-	return l.writer
-}
-
-func (l *Logger) logWithInferredLevel(msg string) {
-	text := strings.ToLower(msg)
-	switch {
-	case strings.Contains(text, "warn"):
-		l.zlog.Warn().Msg(msg)
-	case strings.Contains(text, "error"), strings.Contains(text, "failed"):
-		l.zlog.Error().Msg(msg)
-	default:
-		l.zlog.Info().Msg(msg)
-	}
-}
-
 // SetupLogging configures the application logging
-func SetupLogging() (*Logger, error) {
+func SetupLogging() (*log.Logger, error) {
 	// Ensure logs directory exists
 	logDir := "logs"
 	if err := os.MkdirAll(logDir, 0755); err != nil {
@@ -89,27 +32,27 @@ func SetupLogging() (*Logger, error) {
 	// This avoids copying the data twice by writing to both outputs in sequence
 	multiWriter := io.MultiWriter(os.Stdout, fileWriter)
 
-	// Create zerolog-compatible logger wrapper with the multi-writer
-	logger := New(multiWriter)
+	// Create a logger with the multi-writer
+	// Using LstdFlags|log.Lshortfile provides useful context without excessive overhead
+	logger := log.New(multiWriter, "", log.LstdFlags|log.Lshortfile)
 
 	// Get current log file path
 	logFilePath := filepath.Join(logDir, fmt.Sprintf("whatsapp-api-%s.log", fileWriter.CurrentDate))
 
 	// Log initialization - this will go to both console and file
 	logger.Printf("Logging initialized to %s", logFilePath)
-	logger.Printf("Log startup timestamp: %s", time.Now().Format(time.RFC3339))
 
 	return logger, nil
 }
 
 // SetupFallbackLogger creates a simple console logger when file logging fails
-func SetupFallbackLogger() *Logger {
+func SetupFallbackLogger() *log.Logger {
 	fmt.Printf("Failed to set up file logging, using console logging only\n")
-	return New(os.Stdout)
+	return log.New(os.Stdout, "", log.LstdFlags|log.Lshortfile)
 }
 
 // GetWriter returns the writer for the logger
-func GetWriter(logger *Logger) io.Writer {
+func GetWriter(logger *log.Logger) io.Writer {
 	return logger.Writer()
 }
 
