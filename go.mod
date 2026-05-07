@@ -52,10 +52,10 @@ require (
 	github.com/mattn/go-isatty v0.0.22 // indirect
 	github.com/mattn/go-sqlite3 v1.14.44
 	github.com/petermattis/goid v0.0.0-20260330135022-df67b199bc81 // indirect
-	github.com/rs/zerolog v1.35.1 // indirect
+	github.com/rs/zerolog v1.35.1
 	go.mau.fi/libsignal v0.2.1 // indirect
 	go.mau.fi/util v0.9.8 // indirect
-	go.mau.fi/whatsmeow v0.0.0-20260506084945-03911c62c6cf
+	go.mau.fi/whatsmeow v0.0.0-20260506122147-6a7198d94d26
 	golang.org/x/crypto v0.50.0 // indirect
 	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f // indirect
 	golang.org/x/net v0.53.0 // indirect
