@@ -49,9 +49,7 @@ print_usage() {
     echo -e "  ${GREEN}restart${NC}    - Restart all containers"
     echo -e "  ${GREEN}rebuild${NC}    - Rebuild and restart all containers"
     echo -e "  ${GREEN}logs${NC}       - Show logs for all containers"
-    echo -e "  ${GREEN}logs caddy${NC} - Show logs for the Caddy container"
     echo -e "  ${GREEN}logs api${NC}   - Show logs for the WhatsApp API container"
-    echo -e "  ${GREEN}format-caddy${NC} - Format the Caddyfile and restart Caddy"
     echo -e "  ${GREEN}status${NC}     - Check the status of all containers"
     echo -e "  ${GREEN}health${NC}     - Get basic health status of API"
     echo -e "  ${GREEN}health-detailed${NC} - Get detailed health status of API"
@@ -155,9 +153,6 @@ show_logs() {
     if [ -z "$1" ]; then
         echo -e "${BLUE}Showing logs for all containers...${NC}"
         docker compose logs --tail=100 -f
-    elif [ "$1" = "caddy" ]; then
-        echo -e "${BLUE}Showing logs for Caddy container...${NC}"
-        docker compose logs --tail=100 -f caddy
     elif [ "$1" = "api" ]; then
         echo -e "${BLUE}Showing logs for WhatsApp API container...${NC}"
         docker compose logs --tail=100 -f whatsapp-api
@@ -168,27 +163,6 @@ show_logs() {
     fi
 }
 
-# Format Caddyfile
-format_caddyfile() {
-    echo -e "${BLUE}Formatting Caddyfile...${NC}"
-    docker run --rm -v "$(pwd)/Caddyfile:/etc/caddy/Caddyfile" caddy:2.10-alpine caddy fmt --overwrite /etc/caddy/Caddyfile
-
-    if [ $? -eq 0 ]; then
-        echo -e "${GREEN}Caddyfile formatted successfully${NC}"
-
-        # Restart Caddy to apply changes
-        echo -e "${BLUE}Restarting Caddy container...${NC}"
-        docker compose restart caddy
-
-        if [ $? -eq 0 ]; then
-            echo -e "${GREEN}Caddy container restarted successfully${NC}"
-        else
-            echo -e "${RED}Failed to restart Caddy container${NC}"
-        fi
-    else
-        echo -e "${RED}Failed to format Caddyfile${NC}"
-    fi
-}
 
 # Show container status
 show_status() {
@@ -387,9 +361,6 @@ main() {
             ;;
         logs)
             show_logs "$2"
-            ;;
-        format-caddy)
-            format_caddyfile
             ;;
         status)
             show_status
