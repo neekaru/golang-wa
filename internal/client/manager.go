@@ -3,11 +3,10 @@ package client
 import (
 	"context"
 	"fmt"
-	"log"
-	"os"
 	"sync"
 	"time"
 
+	"github.com/neekaru/whatsappgo-bot/pkg/logger"
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/store/sqlstore"
 )
@@ -50,7 +49,7 @@ type ClientManager struct {
 	clientsLock   sync.RWMutex
 	observers     map[string][]Observer
 	observersLock sync.RWMutex
-	logger        *log.Logger
+	logger        *logger.Logger
 	workerPool    chan func()
 }
 
@@ -62,10 +61,11 @@ var (
 // GetInstance returns the singleton instance of ClientManager
 func GetInstance() *ClientManager {
 	once.Do(func() {
+		fallbackLogger := logger.SetupFallbackLogger().WithPrefix("ClientManager")
 		instance = &ClientManager{
 			clients:    make(map[string]*Client),
 			observers:  make(map[string][]Observer),
-			logger:     log.New(os.Stdout, "ClientManager: ", log.LstdFlags),
+			logger:     fallbackLogger,
 			workerPool: make(chan func(), 100), // Buffer size of 100 tasks
 		}
 		// Start worker pool
@@ -74,6 +74,14 @@ func GetInstance() *ClientManager {
 		}
 	})
 	return instance
+}
+
+// SetLogger sets the logger for this client manager instance.
+func (m *ClientManager) SetLogger(l *logger.Logger) {
+	if l == nil {
+		return
+	}
+	m.logger = l
 }
 
 // worker processes tasks from the worker pool
