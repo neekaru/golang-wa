@@ -11,7 +11,7 @@ RUN go mod download
 # Disable CGO but remove static build flags
 RUN CGO_ENABLED=1 GOOS=linux go build -o bot .
 
-FROM alpine:3.23.3
+FROM alpine:3.23.4
 
 RUN apk add --no-cache ca-certificates supervisor sqlite curl ffmpeg
 

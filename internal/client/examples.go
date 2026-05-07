@@ -76,9 +76,10 @@ func ExampleRegisterObservers(clientManager *ClientManager, logger *log.Logger) 
 		logger.Printf("Client %s status changed to %s", clientID, status.String())
 
 		// Example of taking action based on status change
-		if status == StatusLoggedIn {
+		switch status {
+		case StatusLoggedIn:
 			logger.Printf("Client %s is now logged in, can start sending messages", clientID)
-		} else if status == StatusDisconnected {
+		case StatusDisconnected:
 			logger.Printf("Client %s is now disconnected, should reconnect", clientID)
 		}
 	}))
