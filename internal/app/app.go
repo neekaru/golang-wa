@@ -1,11 +1,11 @@
 package app
 
 import (
+	"log"
 	"sync"
 	"time"
 
 	"github.com/neekaru/whatsappgo-bot/internal/client"
-	"github.com/neekaru/whatsappgo-bot/pkg/logger"
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/store/sqlstore"
 )
@@ -28,7 +28,7 @@ type App struct {
 	Sessions     map[string]*Session
 	SessionsLock sync.RWMutex
 
-	Logger    *logger.Logger
+	Logger    *log.Logger
 	StartTime time.Time // Track startup time for health checks
 
 	SendLimiter *SendRateLimiter
@@ -119,14 +119,13 @@ func (l *DuplicateMessageLimiter) Allow(key string, max int, window time.Duratio
 }
 
 // NewApp creates a new App instance with initialized resources
-func NewApp(appLogger *logger.Logger) *App {
+func NewApp(logger *log.Logger) *App {
 	// Initialize the ClientManager singleton
-	manager := client.GetInstance()
-	manager.SetLogger(appLogger.WithPrefix("ClientManager"))
+	_ = client.GetInstance()
 
 	return &App{
 		Sessions:  make(map[string]*Session),
-		Logger:    appLogger,
+		Logger:    logger,
 		StartTime: time.Now(),
 		SendLimiter: NewSendRateLimiter(),
 		DuplicateLimiter: NewDuplicateMessageLimiter(),

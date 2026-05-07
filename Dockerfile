@@ -11,7 +11,7 @@ RUN go mod download
 # Disable CGO but remove static build flags
 RUN CGO_ENABLED=1 GOOS=linux go build -o bot .
 
-FROM alpine:3.23.4
+FROM alpine:3.23.3
 
 RUN apk add --no-cache ca-certificates supervisor sqlite curl ffmpeg
 
@@ -29,8 +29,8 @@ RUN mkdir -p /var/log/supervisor /app/data /app/logs && \
 # This is a fallback in case the application's internal log rotation fails
 RUN echo '0 0 * * * find /app/logs -name "whatsapp-api-*.log" -mtime +7 -delete' > /etc/crontabs/root
 
-# Expose port 3000 for the API
-EXPOSE 3000
+# Only exposing 8080 as Caddy will handle port 80
+EXPOSE 8080
 
 # Define volumes for both data and logs
 VOLUME ["/app/data", "/app/logs"]
