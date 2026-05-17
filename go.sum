@@ -130,10 +130,10 @@ github.com/vektah/gqlparser/v2 v2.5.33 h1:lRp8aIeNUNbimf/axZd7ETg24q06hBtPaas+Tc
 github.com/vektah/gqlparser/v2 v2.5.33/go.mod h1:c1I28gSOVNzlfc4WuDlqU7voQnsqI6OG2amkBAFmgts=
 go.mau.fi/libsignal v0.2.1 h1:vRZG4EzTn70XY6Oh/pVKrQGuMHBkAWlGRC22/85m9L0=
 go.mau.fi/libsignal v0.2.1/go.mod h1:iVvjrHyfQqWajOUaMEsIfo3IqgVMrhWcPiiEzk7NgoU=
-go.mau.fi/util v0.9.8 h1:+/jf8eM2dAT2wx9UidmaneH28r/CSCKCniCyby1qWz8=
-go.mau.fi/util v0.9.8/go.mod h1:up/5mbzH2M1pSBNXqRxODn8dg/hEKbLJu92W4/SNAX0=
-go.mau.fi/whatsmeow v0.0.0-20260513140310-c551a4055c0f h1:icWtsD1MH5nlo8mEpHMPZ9+1kgHkjmXQroYi0lHXKZ0=
-go.mau.fi/whatsmeow v0.0.0-20260513140310-c551a4055c0f/go.mod h1:ijfkzOXauA/Vz/htXEMfOAJSUgglribW5oQeYC9tSSg=
+go.mau.fi/util v0.9.9 h1:ujDeXCo07HBor5oQLyO1tHklupmqVmPgasc53d7q/NE=
+go.mau.fi/util v0.9.9/go.mod h1:pqt4Vcrt+5gcH/CgrHZg11qSx+b34o6mknGzOEA6waY=
+go.mau.fi/whatsmeow v0.0.0-20260516102357-8d3700152a69 h1:rRcG2I1LVQ11kH2+KSYxNeFNZXp1oKA5Yxmagsf5bks=
+go.mau.fi/whatsmeow v0.0.0-20260516102357-8d3700152a69/go.mod h1:SY+3c678dbtckGZF16M+sfEW8ZxTb9xkaKwhXueF5yE=
 go.mongodb.org/mongo-driver/v2 v2.6.0 h1:b9sJOYrkmt4l8bY43ZenFBcPlhYIjaOfYHLtbB/5qi8=
 go.mongodb.org/mongo-driver/v2 v2.6.0/go.mod h1:yOI9kBsufol30iFsl1slpdq1I0eHPzybRWdyYUs8K/0=
 go.uber.org/mock v0.6.0 h1:hyF9dfmbgIX5EfOdasqLsWD6xqpNZlXblLB/Dbnwv3Y=
