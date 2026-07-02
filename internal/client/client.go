@@ -1,6 +1,8 @@
 package client
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"math"
 	"sync"
@@ -10,6 +12,17 @@ import (
 	"go.mau.fi/whatsmeow/store/sqlstore"
 	"go.mau.fi/whatsmeow/types/events"
 )
+
+// PasskeyState represents the current state of a passkey pairing flow
+type PasskeyState struct {
+	Pending       bool            `json:"pending"`
+	PublicKeyJSON json.RawMessage `json:"public_key"`
+	Code          string          `json:"code"`
+	SkipHandoffUX bool            `json:"skip_ux"`
+	Error         string          `json:"error"`
+	Done          bool            `json:"done"`
+	LoggedIn      bool            `json:"logged_in"`
+}
 
 // Client represents a WhatsApp client
 type Client struct {
@@ -25,6 +38,30 @@ type Client struct {
 
 	// Mutex for protecting client state
 	mu sync.Mutex
+
+	// Passkey pairing state
+	passkeyLock          sync.RWMutex
+	passkeyPending       bool
+	passkeyPublicKeyJSON json.RawMessage
+	passkeyCode          string
+	passkeySkipHandoffUX bool
+	passkeyError         string
+	passkeyDone          bool
+}
+
+// GetPasskeyState returns the current passkey pairing state
+func (c *Client) GetPasskeyState() *PasskeyState {
+	c.passkeyLock.RLock()
+	defer c.passkeyLock.RUnlock()
+	return &PasskeyState{
+		Pending:       c.passkeyPending,
+		PublicKeyJSON: c.passkeyPublicKeyJSON,
+		Code:          c.passkeyCode,
+		SkipHandoffUX: c.passkeySkipHandoffUX,
+		Error:         c.passkeyError,
+		Done:          c.passkeyDone,
+		LoggedIn:      c.IsLoggedIn(),
+	}
 }
 
 // Connect connects the client to WhatsApp
@@ -32,7 +69,6 @@ func (c *Client) Connect() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	// Update last activity time
 	c.lastActivityTime = time.Now()
 
 	if c.WhatsmeowClient.IsConnected() {
@@ -62,7 +98,6 @@ func (c *Client) Disconnect() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	// Update last activity time
 	c.lastActivityTime = time.Now()
 
 	if !c.WhatsmeowClient.IsConnected() {
@@ -78,14 +113,11 @@ func (c *Client) Disconnect() {
 func (c *Client) Reconnect() {
 	c.mu.Lock()
 
-	// Update last activity time
 	c.lastActivityTime = time.Now()
 
-	// Calculate backoff time
 	backoffSeconds := math.Min(30, math.Pow(2, float64(c.reconnectAttempts)))
 	backoffDuration := time.Duration(backoffSeconds) * time.Second
 
-	// Check if we need to wait before reconnecting
 	timeSinceLastReconnect := time.Since(c.lastReconnectTime)
 	if timeSinceLastReconnect < backoffDuration {
 		waitTime := backoffDuration - timeSinceLastReconnect
@@ -134,21 +166,18 @@ func (c *Client) NeedsQR() bool {
 // handleWhatsmeowEvent handles events from the whatsmeow client
 func (c *Client) handleWhatsmeowEvent(evt interface{}) {
 	c.mu.Lock()
-	// Update last activity time
 	c.lastActivityTime = time.Now()
 	c.mu.Unlock()
 
 	switch e := evt.(type) {
 	case *events.Connected:
 		c.mu.Lock()
-		// When connected, we're also logged in
 		c.Status = StatusLoggedIn
 		c.mu.Unlock()
 		c.manager.DispatchEvent(NewStatusEvent(c.ID, c.Status))
 		c.manager.logger.Printf("Client %s connected and logged in", c.ID)
 
 	case *events.LoggedOut:
-		// 'e' already has type *events.LoggedOut inside this case of the type switch.
 		lo := e
 		if lo.OnConnect {
 			c.manager.logger.Printf("Client %s logged out on connect; reason=%s", c.ID, lo.Reason.String())
@@ -159,6 +188,11 @@ func (c *Client) handleWhatsmeowEvent(evt interface{}) {
 		c.mu.Lock()
 		c.Status = StatusLoggedOut
 		c.mu.Unlock()
+
+		c.passkeyLock.Lock()
+		c.passkeyPending = false
+		c.passkeyLock.Unlock()
+
 		c.manager.DispatchEvent(NewStatusEvent(c.ID, c.Status))
 
 	case *events.Disconnected:
@@ -167,10 +201,13 @@ func (c *Client) handleWhatsmeowEvent(evt interface{}) {
 		c.Status = StatusDisconnected
 		c.mu.Unlock()
 
+		c.passkeyLock.Lock()
+		c.passkeyPending = false
+		c.passkeyLock.Unlock()
+
 		c.manager.DispatchEvent(NewStatusEvent(c.ID, c.Status))
 		c.manager.logger.Printf("Client %s disconnected", c.ID)
 
-		// Only attempt to reconnect if we were previously connected
 		if wasConnected {
 			go c.Reconnect()
 		}
@@ -182,8 +219,57 @@ func (c *Client) handleWhatsmeowEvent(evt interface{}) {
 	case *events.QR:
 		c.manager.logger.Printf("Client %s received QR code", c.ID)
 		c.manager.DispatchEvent(NewQREvent(c.ID, e))
+
+	case *events.PairSuccess:
+		c.passkeyLock.Lock()
+		c.passkeyPending = false
+		c.passkeyDone = true
+		c.passkeyLock.Unlock()
+		c.manager.logger.Printf("Client %s pair success", c.ID)
+
+	case *events.PairPasskeyRequest:
+		pubJSON, err := json.Marshal(e.PublicKey)
+		if err != nil {
+			c.manager.logger.Printf("Client %s failed to marshal passkey public key: %v", c.ID, err)
+			return
+		}
+		c.passkeyLock.Lock()
+		c.passkeyPending = true
+		c.passkeyPublicKeyJSON = pubJSON
+		c.passkeyCode = ""
+		c.passkeySkipHandoffUX = false
+		c.passkeyError = ""
+		c.passkeyDone = false
+		c.passkeyLock.Unlock()
+		c.manager.logger.Printf("Client %s received passkey request", c.ID)
+
+	case *events.PairPasskeyConfirmation:
+		c.passkeyLock.Lock()
+		c.passkeyCode = e.Code
+		c.passkeySkipHandoffUX = e.SkipHandoffUX
+		c.passkeyLock.Unlock()
+		c.manager.logger.Printf("Client %s received passkey confirmation (code=%s, skip_ux=%v)", c.ID, e.Code, e.SkipHandoffUX)
+		if e.SkipHandoffUX {
+			cli := c.WhatsmeowClient
+			go func() {
+				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+				defer cancel()
+				if err := cli.SendPasskeyConfirmation(ctx); err != nil {
+					c.passkeyLock.Lock()
+					c.passkeyError = err.Error()
+					c.passkeyLock.Unlock()
+					c.manager.logger.Printf("Client %s failed to auto-confirm passkey: %v", c.ID, err)
+				}
+			}()
+		}
+
+	case *events.PairPasskeyError:
+		c.passkeyLock.Lock()
+		c.passkeyPending = false
+		c.passkeyError = e.Error.Error()
+		c.passkeyLock.Unlock()
+		c.manager.logger.Printf("Client %s passkey error: %v", c.ID, e.Error)
 	}
 
-	// Dispatch the raw event as well
 	c.manager.DispatchEvent(NewRawEvent(c.ID, evt))
 }

@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"io"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -52,4 +53,59 @@ func (h *Handlers) QRImageHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"qrcode": "data:image/png;base64," + qrCode})
+}
+
+// PasskeyStatusHandler handles checking the current passkey pairing status
+func (h *Handlers) PasskeyStatusHandler(c *gin.Context) {
+	user := c.Query("user")
+	if user == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing user"})
+		return
+	}
+
+	status, err := h.service.GetPasskeyStatus(user)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, status)
+}
+
+// PasskeyResponseHandler handles submitting a WebAuthn response for passkey pairing
+func (h *Handlers) PasskeyResponseHandler(c *gin.Context) {
+	user := c.Query("user")
+	if user == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing user"})
+		return
+	}
+
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read request body"})
+		return
+	}
+
+	if err := h.service.SubmitPasskeyResponse(user, body); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
+}
+
+// PasskeyConfirmHandler handles confirming a passkey pairing code was shown to the user
+func (h *Handlers) PasskeyConfirmHandler(c *gin.Context) {
+	user := c.Query("user")
+	if user == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing user"})
+		return
+	}
+
+	if err := h.service.ConfirmPasskey(user); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }

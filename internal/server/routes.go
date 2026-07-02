@@ -29,6 +29,11 @@ func (s *Server) SetupRoutes() {
 	authHandlers := auth.NewHandlers(s.app)
 	s.router.GET("/wa/qr-image", authHandlers.QRImageHandler)
 
+	// Register passkey pairing handlers
+	s.router.GET("/wa/passkey/status", authHandlers.PasskeyStatusHandler)
+	s.router.POST("/wa/passkey/response", authHandlers.PasskeyResponseHandler)
+	s.router.POST("/wa/passkey/confirm", authHandlers.PasskeyConfirmHandler)
+
 	// Register messaging handlers
 	messagingHandlers := messaging.NewHandlers(s.app)
 	s.router.POST("/send", messagingHandlers.SendMessageHandler)
