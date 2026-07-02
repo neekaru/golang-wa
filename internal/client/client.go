@@ -17,11 +17,21 @@ import (
 type PasskeyState struct {
 	Pending       bool            `json:"pending"`
 	PublicKeyJSON json.RawMessage `json:"public_key"`
+	WebAuthn      *LoginWebAuthnParams `json:"webauthn,omitempty"`
 	Code          string          `json:"code"`
 	SkipHandoffUX bool            `json:"skip_ux"`
 	Error         string          `json:"error"`
 	Done          bool            `json:"done"`
 	LoggedIn      bool            `json:"logged_in"`
+}
+
+// LoginWebAuthnParams mirrors mautrix/go bridgev2.LoginWebAuthnParams
+type LoginWebAuthnParams struct {
+	URL       string          `json:"url,omitempty"`
+	PublicKey json.RawMessage `json:"public_key,omitempty"`
+	Identity  json.RawMessage `json:"identity,omitempty"`
+	OTP       []string        `json:"otp,omitempty"`
+	Password  bool            `json:"password,omitempty"`
 }
 
 // Client represents a WhatsApp client
@@ -53,7 +63,7 @@ type Client struct {
 func (c *Client) GetPasskeyState() *PasskeyState {
 	c.passkeyLock.RLock()
 	defer c.passkeyLock.RUnlock()
-	return &PasskeyState{
+	state := &PasskeyState{
 		Pending:       c.passkeyPending,
 		PublicKeyJSON: c.passkeyPublicKeyJSON,
 		Code:          c.passkeyCode,
@@ -62,6 +72,13 @@ func (c *Client) GetPasskeyState() *PasskeyState {
 		Done:          c.passkeyDone,
 		LoggedIn:      c.IsLoggedIn(),
 	}
+	if c.passkeyPending && len(c.passkeyPublicKeyJSON) > 0 {
+		state.WebAuthn = &LoginWebAuthnParams{
+			URL:       "https://web.whatsapp.com",
+			PublicKey: c.passkeyPublicKeyJSON,
+		}
+	}
+	return state
 }
 
 // Connect connects the client to WhatsApp

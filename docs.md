@@ -129,14 +129,20 @@ curl -X GET "http://localhost:8080/wa/passkey/status?user=test_user"
 ```json
 {
   "pending": true,
-  "public_key": {
-    "challenge": "...",
-    "timeout": 60000,
-    "rpId": "web.whatsapp.com",
-    "allowCredentials": [...],
-    "userVerification": "required"
+  "webauthn": {
+    "url": "https://web.whatsapp.com",
+    "public_key": {
+      "challenge": "...",
+      "timeout": 60000,
+      "rpId": "web.whatsapp.com",
+      "allowCredentials": [...],
+      "userVerification": "required"
+    },
+    "identity": null,
+    "otp": null,
+    "password": false
   },
-  "snippet": "console.log((await navigator.credentials.get({\n  publicKey: PublicKeyCredential.parseRequestOptionsFromJSON({...})\n})).toJSON())",
+  "snippet": "console.log((await navigator.credentials.get({...})).toJSON())",
   "code": "",
   "skip_ux": false,
   "error": "",
@@ -149,6 +155,7 @@ curl -X GET "http://localhost:8080/wa/passkey/status?user=test_user"
 ```json
 {
   "pending": false,
+  "webauthn": null,
   "code": "",
   "skip_ux": false,
   "error": "",
