@@ -163,6 +163,7 @@ func (s *Service) GetPasskeyStatus(user string) (map[string]interface{}, error) 
 	state := whatsappClient.GetPasskeyState()
 	response := map[string]interface{}{
 		"pending":   state.Pending,
+		"url":       "https://web.whatsapp.com",
 		"code":      state.Code,
 		"skip_ux":   state.SkipHandoffUX,
 		"error":     state.Error,
