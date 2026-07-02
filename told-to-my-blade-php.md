@@ -15,6 +15,30 @@ Setelah user scan QR dan WhatsApp minta passkey, frontend harus:
 
 `navigator.credentials.get()` cuma bisa jalan di origin `web.whatsapp.com`. Nggak bisa dari domain admin travel kamu. Makanya admin harus buka `https://web.whatsapp.com` → F12 Console → paste snippet.
 
+## Response `GET /wa/passkey/status`
+
+```json
+{
+  "pending": true,
+  "webauthn": {
+    "url": "https://web.whatsapp.com",
+    "public_key": { "challenge": "...", "rpId": "web.whatsapp.com", ... },
+    "identity": null,
+    "otp": null,
+    "password": false
+  },
+  "snippet": "console.log(...)",
+  "code": "",
+  "skip_ux": false,
+  "error": "",
+  "done": false,
+  "logged_in": false
+}
+```
+
+- `webauthn` → `null` kalau nggak ada passkey pending. Field `url` + `public_key` selalu ada kalau pending.
+- `identity`, `otp`, `password` → reserved buat future, WhatsApp saat ini public-key only.
+
 ## Kapan Trigger Flow Ini?
 
 Setelah berhasil dapet QR (`GET /wa/qr-image`) dan user udah scan. Mulai polling `/wa/passkey/status` setiap 2-3 detik. Kalau `pending: true`, tampilkan modal.
@@ -33,10 +57,10 @@ async function checkPasskeyStatus() {
     const res = await fetch(`${API_BASE}/wa/passkey/status?user=${USER}`);
     const data = await res.json();
 
-    if (data.pending) {
+    if (data.pending && data.webauthn) {
       // Stop polling, tampilkan modal
       clearInterval(pollInterval);
-      showPasskeyModal(data);
+      showPasskeyModal(data.webauthn);
     } else if (data.done || data.logged_in) {
       // Pairing selesai!
       clearInterval(pollInterval);
@@ -58,13 +82,14 @@ function startPasskeyPolling() {
 }
 
 // Tampilkan modal passkey
-function showPasskeyModal(data) {
+function showPasskeyModal(webauthn) {
   const modal = document.getElementById('passkey-modal');
   const snippetEl = document.getElementById('passkey-snippet');
   const responseEl = document.getElementById('passkey-response');
 
-  // Isi snippet yang siap di-paste admin ke console web.whatsapp.com
-  snippetEl.textContent = data.snippet;
+  // Build snippet dari public_key
+  const snippet = buildSnippet(webauthn.public_key);
+  snippetEl.textContent = snippet;
 
   // Reset textarea
   responseEl.value = '';
@@ -113,6 +138,11 @@ async function submitPasskeyResponse() {
 
 function hidePasskeyModal() {
   document.getElementById('passkey-modal').style.display = 'none';
+}
+
+// Build snippet dari public_key (server juga kasih snippet di response, ini fallback)
+function buildSnippet(publicKey) {
+  return `console.log((await navigator.credentials.get({\n  publicKey: PublicKeyCredential.parseRequestOptionsFromJSON(${JSON.stringify(publicKey)})\n})).toJSON())`;
 }
 
 // Konfirmasi pairing code (fallback, jarang dipakai)
@@ -181,4 +211,4 @@ async function confirmPasskeyCode() {
 2. **Polling interval:** 2-3 detik cukup. Jangan terlalu cepat (nge-spam server).
 3. **Error handling:** Kalau `error` di status terisi, tampilkan ke admin dan stop polling.
 4. **`skip_ux`:** Biasanya `true` (backend auto-konfirmasi). Kalau `false` dan `code` terisi, tampilkan kode pairing ke admin, lalu admin konfirmasi di HP-nya, baru panggil `POST /wa/passkey/confirm`.
-5. **Public key:** Disimpan di `data.public_key` (object JSON) — dipakai backend buat bikin snippet. Frontend nggak perlu olah sendiri.
+5. **Response `webauthn`:** Object `{url, public_key, identity, otp, password}` — mirror mautrix `LoginWebAuthnParams`. `identity`/`otp`/`password` reserved buat future, saat ini WhatsApp cuma pakai `public_key`.
