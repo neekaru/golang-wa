@@ -104,6 +104,113 @@ curl -X POST http://localhost:8080/wa/logout \
   }'
 ```
 
+## Passkey Pairing (WebAuthn)
+
+WhatsApp now requires a passkey during device pairing. These endpoints handle the WebAuthn flow that runs after the QR code is scanned.
+
+### Flow Overview
+
+1. Generate QR (`GET /wa/qr-image`) and scan with phone — same as before.
+2. Poll `GET /wa/passkey/status` until `pending: true`. The response includes `public_key` and a ready-to-paste `snippet`.
+3. Open `https://web.whatsapp.com` in the browser, paste the `snippet` into the DevTools Console (F12), and run it.
+4. Copy the resulting JSON from the console.
+5. POST the JSON to `/wa/passkey/response`.
+6. Continue polling `/wa/passkey/status` until `done: true` or `logged_in: true`.
+
+> **Why web.whatsapp.com?** `navigator.credentials.get()` requires the calling page's origin to match the `rpId` (`web.whatsapp.com`). The WebAuthn ceremony cannot run from any other domain.
+
+### 1. Check Passkey Status
+
+```bash
+curl -X GET "http://localhost:8080/wa/passkey/status?user=test_user"
+```
+
+**Response (pending passkey):**
+```json
+{
+  "pending": true,
+  "public_key": {
+    "challenge": "...",
+    "timeout": 60000,
+    "rpId": "web.whatsapp.com",
+    "allowCredentials": [...],
+    "userVerification": "required"
+  },
+  "snippet": "console.log((await navigator.credentials.get({\n  publicKey: PublicKeyCredential.parseRequestOptionsFromJSON({...})\n})).toJSON())",
+  "code": "",
+  "skip_ux": false,
+  "error": "",
+  "done": false,
+  "logged_in": false
+}
+```
+
+**Response (no pending passkey):**
+```json
+{
+  "pending": false,
+  "code": "",
+  "skip_ux": false,
+  "error": "",
+  "done": false,
+  "logged_in": false,
+  "snippet": ""
+}
+```
+
+**Response (pairing complete):**
+```json
+{
+  "pending": false,
+  "code": "",
+  "skip_ux": false,
+  "error": "",
+  "done": true,
+  "logged_in": true,
+  "snippet": ""
+}
+```
+
+### 2. Submit WebAuthn Response
+
+POST the JSON output from `navigator.credentials.get().toJSON()` (the console snippet result).
+
+```bash
+curl -X POST "http://localhost:8080/wa/passkey/response?user=test_user" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": "...",
+    "rawId": "...",
+    "type": "public-key",
+    "response": {
+      "clientDataJSON": "...",
+      "authenticatorData": "...",
+      "signature": "...",
+      "userHandle": "..."
+    }
+  }'
+```
+
+**Success:**
+```json
+{"status": "ok"}
+```
+
+### 3. Confirm Pairing Code (fallback)
+
+If the status shows `code` with `skip_ux: false`, display the code to the user and have them confirm on their other device. Then call this endpoint.
+
+```bash
+curl -X POST "http://localhost:8080/wa/passkey/confirm?user=test_user"
+```
+
+**Success:**
+```json
+{"status": "ok"}
+```
+
+> This endpoint is typically not needed — the handoff path (`skip_ux: true`) auto-confirms.
+
 ## Messaging
 
 ### 1. Send Text Message
