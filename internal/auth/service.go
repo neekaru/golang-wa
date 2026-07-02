@@ -163,7 +163,7 @@ func (s *Service) GetPasskeyStatus(user string) (map[string]interface{}, error) 
 	state := whatsappClient.GetPasskeyState()
 	response := map[string]interface{}{
 		"pending":   state.Pending,
-		"url":       "https://web.whatsapp.com",
+		"webauthn":  state.WebAuthn,
 		"code":      state.Code,
 		"skip_ux":   state.SkipHandoffUX,
 		"error":     state.Error,
@@ -171,9 +171,8 @@ func (s *Service) GetPasskeyStatus(user string) (map[string]interface{}, error) 
 		"logged_in": state.LoggedIn,
 		"snippet":   "",
 	}
-	if state.Pending && len(state.PublicKeyJSON) > 0 {
-		response["public_key"] = json.RawMessage(state.PublicKeyJSON)
-		response["snippet"] = buildPasskeySnippet(state.PublicKeyJSON)
+	if state.WebAuthn != nil {
+		response["snippet"] = buildPasskeySnippet(state.WebAuthn.PublicKey)
 	}
 	return response, nil
 }

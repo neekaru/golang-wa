@@ -1,0 +1,80 @@
+2026/03/01 21:48:06 logger.go:43: Logging initialized to logs\whatsapp-api-2026-03-01.log
+2026/03/01 21:48:06 main.go:26: Starting WhatsApp API service
+2026/03/01 21:48:06 main.go:35: Ensured data directory exists
+[GIN-debug] [WARNING] Creating an Engine instance with the Logger and Recovery middleware already attached.
+
+[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
+ - using env:	export GIN_MODE=release
+ - using code:	gin.SetMode(gin.ReleaseMode)
+
+[GIN-debug] GET    /                         --> github.com/neekaru/whatsappgo-bot/internal/health.(*Handlers).RootHandler-fm (4 handlers)
+[GIN-debug] GET    /health                   --> github.com/neekaru/whatsappgo-bot/internal/health.(*Handlers).HealthCheckHandler-fm (4 handlers)
+[GIN-debug] GET    /health/                  --> github.com/neekaru/whatsappgo-bot/internal/health.(*Handlers).HealthCheckHandlerWithSlash-fm (4 handlers)
+[GIN-debug] POST   /wa/add                   --> github.com/neekaru/whatsappgo-bot/internal/session.(*Handlers).AddSessionHandler-fm (4 handlers)
+[GIN-debug] POST   /wa/status                --> github.com/neekaru/whatsappgo-bot/internal/session.(*Handlers).StatusHandler-fm (4 handlers)
+[GIN-debug] GET    /wa/status                --> github.com/neekaru/whatsappgo-bot/internal/session.(*Handlers).StatusHandler-fm (4 handlers)
+[GIN-debug] POST   /wa/restart               --> github.com/neekaru/whatsappgo-bot/internal/session.(*Handlers).RestartHandler-fm (4 handlers)
+[GIN-debug] POST   /wa/logout                --> github.com/neekaru/whatsappgo-bot/internal/session.(*Handlers).LogoutHandler-fm (4 handlers)
+[GIN-debug] GET    /wa/qr-image              --> github.com/neekaru/whatsappgo-bot/internal/auth.(*Handlers).QRImageHandler-fm (4 handlers)
+[GIN-debug] POST   /send                     --> github.com/neekaru/whatsappgo-bot/internal/messaging.(*Handlers).SendMessageHandler-fm (4 handlers)
+[GIN-debug] POST   /msg/read                 --> github.com/neekaru/whatsappgo-bot/internal/messaging.(*Handlers).MarkReadHandler-fm (4 handlers)
+[GIN-debug] POST   /send/file                --> github.com/neekaru/whatsappgo-bot/internal/media.(*Handlers).SendFileHandler-fm (4 handlers)
+[GIN-debug] POST   /send/image               --> github.com/neekaru/whatsappgo-bot/internal/media.(*Handlers).SendImageHandler-fm (4 handlers)
+[GIN-debug] POST   /send/video               --> github.com/neekaru/whatsappgo-bot/internal/media.(*Handlers).SendVideoHandler-fm (4 handlers)
+[GIN-debug] POST   /contact                  --> github.com/neekaru/whatsappgo-bot/internal/contact.(*Handlers).GetAllContactsHandler-fm (4 handlers)
+[GIN-debug] POST   /contact/saved            --> github.com/neekaru/whatsappgo-bot/internal/contact.(*Handlers).GetSavedContactsHandler-fm (4 handlers)
+[GIN-debug] POST   /contact/unsaved          --> github.com/neekaru/whatsappgo-bot/internal/contact.(*Handlers).GetUnsavedContactsHandler-fm (4 handlers)
+[GIN-debug] POST   /contact/refresh          --> github.com/neekaru/whatsappgo-bot/internal/contact.(*Handlers).RefreshContactsHandler-fm (4 handlers)
+2026/03/01 21:48:06 server.go:56: 🚀 WhatsApp bot running on :8080
+2026/03/01 21:48:16 main.go:58: Shutting down server gracefully...
+2026/03/01 21:48:16 server.go:72: 🚫 Shutting down server...
+2026/03/01 21:48:16 server.go:78: Server exited
+2026/03/01 21:48:16 main.go:65: Closing logger and flushing logs...
+2026/03/01 22:07:04 logger.go:43: Logging initialized to logs\whatsapp-api-2026-03-01.log
+2026/03/01 22:07:04 main.go:26: Starting WhatsApp API service
+2026/03/01 22:07:04 main.go:35: Ensured data directory exists
+[GIN-debug] [WARNING] Creating an Engine instance with the Logger and Recovery middleware already attached.
+
+[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
+ - using env:	export GIN_MODE=release
+ - using code:	gin.SetMode(gin.ReleaseMode)
+
+[GIN-debug] GET    /                         --> github.com/neekaru/whatsappgo-bot/internal/health.(*Handlers).RootHandler-fm (4 handlers)
+[GIN-debug] GET    /health                   --> github.com/neekaru/whatsappgo-bot/internal/health.(*Handlers).HealthCheckHandler-fm (4 handlers)
+[GIN-debug] GET    /health/                  --> github.com/neekaru/whatsappgo-bot/internal/health.(*Handlers).HealthCheckHandlerWithSlash-fm (4 handlers)
+[GIN-debug] POST   /wa/add                   --> github.com/neekaru/whatsappgo-bot/internal/session.(*Handlers).AddSessionHandler-fm (4 handlers)
+[GIN-debug] POST   /wa/status                --> github.com/neekaru/whatsappgo-bot/internal/session.(*Handlers).StatusHandler-fm (4 handlers)
+[GIN-debug] GET    /wa/status                --> github.com/neekaru/whatsappgo-bot/internal/session.(*Handlers).StatusHandler-fm (4 handlers)
+[GIN-debug] POST   /wa/restart               --> github.com/neekaru/whatsappgo-bot/internal/session.(*Handlers).RestartHandler-fm (4 handlers)
+[GIN-debug] POST   /wa/logout                --> github.com/neekaru/whatsappgo-bot/internal/session.(*Handlers).LogoutHandler-fm (4 handlers)
+[GIN-debug] GET    /wa/qr-image              --> github.com/neekaru/whatsappgo-bot/internal/auth.(*Handlers).QRImageHandler-fm (4 handlers)
+[GIN-debug] POST   /send                     --> github.com/neekaru/whatsappgo-bot/internal/messaging.(*Handlers).SendMessageHandler-fm (4 handlers)
+[GIN-debug] POST   /msg/read                 --> github.com/neekaru/whatsappgo-bot/internal/messaging.(*Handlers).MarkReadHandler-fm (4 handlers)
+[GIN-debug] POST   /send/file                --> github.com/neekaru/whatsappgo-bot/internal/media.(*Handlers).SendFileHandler-fm (4 handlers)
+[GIN-debug] POST   /send/image               --> github.com/neekaru/whatsappgo-bot/internal/media.(*Handlers).SendImageHandler-fm (4 handlers)
+[GIN-debug] POST   /send/video               --> github.com/neekaru/whatsappgo-bot/internal/media.(*Handlers).SendVideoHandler-fm (4 handlers)
+[GIN-debug] POST   /contact                  --> github.com/neekaru/whatsappgo-bot/internal/contact.(*Handlers).GetAllContactsHandler-fm (4 handlers)
+[GIN-debug] POST   /contact/saved            --> github.com/neekaru/whatsappgo-bot/internal/contact.(*Handlers).GetSavedContactsHandler-fm (4 handlers)
+[GIN-debug] POST   /contact/unsaved          --> github.com/neekaru/whatsappgo-bot/internal/contact.(*Handlers).GetUnsavedContactsHandler-fm (4 handlers)
+[GIN-debug] POST   /contact/refresh          --> github.com/neekaru/whatsappgo-bot/internal/contact.(*Handlers).RefreshContactsHandler-fm (4 handlers)
+2026/03/01 22:07:04 server.go:56: 🚀 WhatsApp bot running on :8080
+[GIN] 2026/03/01 - 22:08:09 | 200 |   19.4ms |       127.0.0.1 | POST     "/wa/add"
+2026/03/01 22:08:36 service.go:112: Generated QR code for user neekaru
+[GIN] 2026/03/01 - 22:08:36 | 200 |    1.49s |       127.0.0.1 | GET      "/wa/qr-image?user=neekaru"
+2026/03/01 22:09:19 service.go:91: User neekaru connection state changed to: connected
+2026/03/01 22:10:59 service.go:239: Message sent successfully to 6285845931868@s.whatsapp.net from user neekaru
+[GIN] 2026/03/01 - 22:10:59 | 200 |    3.96s |       127.0.0.1 | POST     "/send"
+2026/03/01 22:11:33 service.go:239: Message sent successfully to 6285845931868@s.whatsapp.net from user neekaru
+[GIN] 2026/03/01 - 22:11:33 | 200 |    3.45s |       127.0.0.1 | POST     "/send"
+2026/03/01 22:12:12 service.go:239: Message sent successfully to 6285845931868@s.whatsapp.net from user neekaru
+[GIN] 2026/03/01 - 22:12:12 | 200 |    7.69s |       127.0.0.1 | POST     "/send"
+[GIN] 2026/03/01 - 22:13:08 | 200 |       0s |       127.0.0.1 | POST     "/wa/logout"
+2026/03/01 22:13:10 service.go:91: User neekaru connection state changed to: connected
+2026/03/01 22:13:11 service.go:408: Attempting to connect client for neekaru for proper logout
+2026/03/01 22:13:12 service.go:413: Successfully connected client for neekaru, attempting logout
+2026/03/01 22:13:12 service.go:418: Logout error for neekaru (this is usually not critical): the store doesn't contain a device JID
+2026/03/01 22:13:12 service.go:445: Successfully deleted database file for neekaru
+2026/03/01 22:36:59 main.go:58: Shutting down server gracefully...
+2026/03/01 22:36:59 server.go:72: 🚫 Shutting down server...
+2026/03/01 22:36:59 server.go:78: Server exited
+2026/03/01 22:36:59 main.go:65: Closing logger and flushing logs...
