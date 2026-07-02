@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"github.com/neekaru/whatsappgo-bot/internal/app"
 	"github.com/neekaru/whatsappgo-bot/internal/session"
 	"github.com/skip2/go-qrcode"
+	"go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
 )
 
@@ -148,4 +150,63 @@ func (s *Service) GenerateQRCode(user string) (string, error) {
 	case <-time.After(60 * time.Second):
 		return "", fmt.Errorf("QR code not available after waiting for 60 seconds")
 	}
+}
+
+// GetPasskeyStatus returns the current passkey pairing status for a user
+func (s *Service) GetPasskeyStatus(user string) (map[string]interface{}, error) {
+	clientManager := s.app.GetClientManager()
+	whatsappClient, exists := clientManager.GetClient(user)
+	if !exists {
+		return nil, fmt.Errorf("client not found for user %s", user)
+	}
+
+	state := whatsappClient.GetPasskeyState()
+	response := map[string]interface{}{
+		"pending":   state.Pending,
+		"code":      state.Code,
+		"skip_ux":   state.SkipHandoffUX,
+		"error":     state.Error,
+		"done":      state.Done,
+		"logged_in": state.LoggedIn,
+		"snippet":   "",
+	}
+	if state.Pending && len(state.PublicKeyJSON) > 0 {
+		response["public_key"] = json.RawMessage(state.PublicKeyJSON)
+		response["snippet"] = buildPasskeySnippet(state.PublicKeyJSON)
+	}
+	return response, nil
+}
+
+// SubmitPasskeyResponse submits a WebAuthn response to the WhatsApp server
+func (s *Service) SubmitPasskeyResponse(user string, body []byte) error {
+	clientManager := s.app.GetClientManager()
+	whatsappClient, exists := clientManager.GetClient(user)
+	if !exists {
+		return fmt.Errorf("client not found for user %s", user)
+	}
+
+	var resp types.WebAuthnResponse
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return fmt.Errorf("failed to unmarshal WebAuthn response: %w", err)
+	}
+
+	return whatsappClient.WhatsmeowClient.SendPasskeyResponse(context.Background(), &resp)
+}
+
+// ConfirmPasskey confirms a passkey pairing code was shown to the user
+func (s *Service) ConfirmPasskey(user string) error {
+	clientManager := s.app.GetClientManager()
+	whatsappClient, exists := clientManager.GetClient(user)
+	if !exists {
+		return fmt.Errorf("client not found for user %s", user)
+	}
+
+	return whatsappClient.WhatsmeowClient.SendPasskeyConfirmation(context.Background())
+}
+
+func buildPasskeySnippet(publicKeyJSON json.RawMessage) string {
+	return fmt.Sprintf(
+		"console.log((await navigator.credentials.get({\n  publicKey: PublicKeyCredential.parseRequestOptionsFromJSON(%s)\n})).toJSON())",
+		string(publicKeyJSON),
+	)
 }
