@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"go.mau.fi/whatsmeow/types"
+
 	"github.com/neekaru/whatsappgo-bot/internal/app"
 )
 
@@ -53,13 +55,18 @@ func (s *Service) GetAllContacts(user string) ([]Contact, error) {
 
 	var result []Contact
 	for jid, contact := range contacts {
-		// Skip group JIDs (those containing "@lid" are for groups, not individual contacts)
-		if strings.Contains(jid.String(), "@lid") {
+		// Skip groups and broadcasts
+		if jid.Server == types.GroupServer || jid.Server == types.BroadcastServer {
 			continue
 		}
 
-		// Parse phone number from JID
+		// Resolve phone number: if JID is LID, try to lookup phone number from store mapping
 		phoneNumber := strings.Split(jid.User, "@")[0]
+		if jid.Server == types.HiddenUserServer && client.WhatsmeowClient.Store.LIDs != nil {
+			if pn, err := client.WhatsmeowClient.Store.LIDs.GetPNForLID(ctx, jid); err == nil && !pn.IsEmpty() {
+				phoneNumber = pn.User
+			}
+		}
 
 		displayName := contactDisplayName(contact.FullName, contact.PushName, contact.BusinessName)
 		isSaved := displayName != ""
