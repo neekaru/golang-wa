@@ -12,7 +12,7 @@ require (
 	github.com/aws/aws-sdk-go v1.55.8 // indirect
 	github.com/beeper/argo-go v1.1.2 // indirect
 	github.com/bytedance/gopkg v0.1.4 // indirect
-	github.com/bytedance/sonic v1.15.3 // indirect
+	github.com/bytedance/sonic v1.15.4 // indirect
 	github.com/bytedance/sonic/loader v0.5.2 // indirect
 	github.com/cloudwego/base64x v0.1.7 // indirect
 	github.com/coder/websocket v1.8.15 // indirect
@@ -37,10 +37,10 @@ require (
 	github.com/u2takey/go-utils v0.3.1 // indirect
 	github.com/ugorji/go/codec v1.3.2 // indirect
 	github.com/vektah/gqlparser/v2 v2.5.37 // indirect
-	go.mongodb.org/mongo-driver/v2 v2.9.0 // indirect
-	golang.org/x/arch v0.30.0 // indirect
-	golang.org/x/sync v0.22.0 // indirect
-	golang.org/x/text v0.41.0 // indirect
+	go.mongodb.org/mongo-driver/v2 v2.9.1 // indirect
+	golang.org/x/arch v0.31.0 // indirect
+	golang.org/x/sync v0.23.0 // indirect
+	golang.org/x/text v0.42.0 // indirect
 )
 
 require (
@@ -56,9 +56,9 @@ require (
 	go.mau.fi/libsignal v0.2.2 // indirect
 	go.mau.fi/util v0.10.1-0.20260820140024-eb612d936fde // indirect
 	go.mau.fi/whatsmeow v0.0.0-20260909164725-b25a56d63729
-	golang.org/x/crypto v0.56.0 // indirect
-	golang.org/x/exp v0.0.0-20260824195058-e88cd73687aa // indirect
-	golang.org/x/net v0.58.0 // indirect
-	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/crypto v0.57.0 // indirect
+	golang.org/x/exp v0.0.0-20260908205506-85c1c2202aba // indirect
+	golang.org/x/net v0.59.0 // indirect
+	golang.org/x/sys v0.48.0 // indirect
 	google.golang.org/protobuf v1.36.12
 )
