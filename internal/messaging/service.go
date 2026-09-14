@@ -91,7 +91,7 @@ func (s *Service) simulateTyping(client *whatsmeow.Client, recipient types.JID, 
 }
 
 // SendMessage sends a text message to a WhatsApp contact
-func (s *Service) SendMessage(user, phoneNumber, message string) error {
+func (s *Service) SendMessage(user, phoneNumber, message string) (string, error) {
 	const duplicateWindow = 15 * time.Second
 	const duplicateMax = 3
 	const duplicateMessageWindow = 15 * time.Second
@@ -100,7 +100,7 @@ func (s *Service) SendMessage(user, phoneNumber, message string) error {
 	// Check if phoneNumber is empty or only whitespace
 	if strings.TrimSpace(phoneNumber) == "" {
 		s.app.Logger.Printf("Warning: phone number is empty for user %s", user)
-		return fmt.Errorf("phone number is empty, cannot send message")
+		return "", fmt.Errorf("phone number is empty, cannot send message")
 	}
 	// Check if phoneNumber is valid: all digits or starts with '+' followed by digits
 	valid := true
@@ -125,19 +125,19 @@ func (s *Service) SendMessage(user, phoneNumber, message string) error {
 	}
 	if !valid {
 		s.app.Logger.Printf("Warning: phone number is invalid for user %s: %s", user, phoneNumber)
-		return fmt.Errorf("phone number is invalid, must be all digits or start with '+' followed by digits")
+		return "", fmt.Errorf("phone number is invalid, must be all digits or start with '+' followed by digits")
 	}
 
 	dupKey := fmt.Sprintf("num|%s|%s", user, phoneNumber)
 	allowed, retryAfter := s.app.DuplicateLimiter.Allow(dupKey, duplicateMax, duplicateWindow)
 	if !allowed {
-		return &DuplicateMessageError{RetryAfter: retryAfter}
+		return "", &DuplicateMessageError{RetryAfter: retryAfter}
 	}
 
 	msgKey := fmt.Sprintf("msg|%s|%s|%s", user, phoneNumber, message)
 	msgAllowed, msgRetryAfter := s.app.DuplicateLimiter.Allow(msgKey, duplicateMessageMax, duplicateMessageWindow)
 	if !msgAllowed {
-		return &DuplicateMessageError{RetryAfter: msgRetryAfter}
+		return "", &DuplicateMessageError{RetryAfter: msgRetryAfter}
 	}
 
 	// Use random delay instead of fixed delay to avoid bot detection
@@ -148,7 +148,7 @@ func (s *Service) SendMessage(user, phoneNumber, message string) error {
 
 // sendMessageWithRetry attempts to send a message with automatic reconnection and retry
 // if a websocket disconnection error occurs
-func (s *Service) sendMessageWithRetry(user, phoneNumber, message string) error {
+func (s *Service) sendMessageWithRetry(user, phoneNumber, message string) (string, error) {
 	maxRetries := 3
 	var lastErr error
 
@@ -156,7 +156,7 @@ func (s *Service) sendMessageWithRetry(user, phoneNumber, message string) error 
 		// Get the session
 		sess, exists := s.sessionService.FindSessionByUser(user)
 		if !exists {
-			return fmt.Errorf("session not found")
+			return "", fmt.Errorf("session not found")
 		}
 
 		// Ensure client is connected before sending
@@ -192,7 +192,7 @@ func (s *Service) sendMessageWithRetry(user, phoneNumber, message string) error 
 		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 
 		// Send the message
-		_, err := sess.Client.SendMessage(ctx, recipient, msg, opts)
+		resp, err := sess.Client.SendMessage(ctx, recipient, msg, opts)
 		cancel() // Cancel the context after sending
 
 		if err != nil {
@@ -203,7 +203,7 @@ func (s *Service) sendMessageWithRetry(user, phoneNumber, message string) error 
 				// Check if the user is logged in before attempting to reconnect
 				if !sess.IsLoggedIn {
 					s.app.Logger.Printf("User %s is not logged in, not attempting to reconnect", user)
-					return fmt.Errorf("user is not logged in, cannot reconnect: %v", lastErr)
+					return "", fmt.Errorf("user is not logged in, cannot reconnect: %v", lastErr)
 				}
 
 				s.app.Logger.Printf("Websocket disconnected during message send (attempt %d/%d). Reconnecting...",
@@ -226,11 +226,15 @@ func (s *Service) sendMessageWithRetry(user, phoneNumber, message string) error 
 			}
 
 			// For other types of errors, return immediately
-			return lastErr
+			return "", lastErr
 		}
 
 		// If we get here, the message was sent successfully
-		s.app.Logger.Printf("Message sent successfully to %s from user %s", recipient.String(), user)
+		actualChat := resp.Chat.String()
+		if actualChat == "" {
+			actualChat = recipient.String()
+		}
+		s.app.Logger.Printf("Message sent successfully to %s (chat %s) from user %s", recipient.String(), actualChat, user)
 
 		// Post-send: set presence back to unavailable after a random delay
 		go func() {
@@ -238,11 +242,11 @@ func (s *Service) sendMessageWithRetry(user, phoneNumber, message string) error 
 			_ = sess.Client.SendPresence(context.Background(), types.PresenceUnavailable)
 		}()
 
-		return nil
+		return actualChat, nil
 	}
 
 	// If we've exhausted all retries, return the last error
-	return lastErr
+	return "", lastErr
 }
 
 // MarkRead marks messages as read
@@ -258,8 +262,14 @@ func (s *Service) MarkRead(user string, messageIDs []string, fromJID, toJID stri
 		typedMessageIDs[i] = types.MessageID(id)
 	}
 
-	fromJIDObj := types.JID{User: fromJID, Server: "s.whatsapp.net"}
-	toJIDObj := types.JID{User: toJID, Server: "s.whatsapp.net"}
+	fromJIDObj, err := types.ParseJID(fromJID)
+	if err != nil {
+		fromJIDObj = types.JID{User: fromJID, Server: types.DefaultUserServer}
+	}
+	toJIDObj, err := types.ParseJID(toJID)
+	if err != nil {
+		toJIDObj = types.JID{User: toJID, Server: types.DefaultUserServer}
+	}
 
 	// Use a context with a timeout for the MarkRead operation
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

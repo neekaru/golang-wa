@@ -323,7 +323,7 @@ func (s *Service) SendMedia(user, phoneNumber, mediaType, mediaData, mediaURL, c
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	_, err = sess.Client.SendMessage(ctx, recipient, &msg, opts)
+	resp, err := sess.Client.SendMessage(ctx, recipient, &msg, opts)
 	if err != nil {
 		// Check if this is a websocket disconnection error
 		if strings.Contains(err.Error(), "websocket disconnected") {
@@ -352,7 +352,7 @@ func (s *Service) SendMedia(user, phoneNumber, mediaType, mediaData, mediaURL, c
 			ctx2, cancel2 := context.WithTimeout(context.Background(), 60*time.Second)
 			defer cancel2()
 
-			_, err = sess.Client.SendMessage(ctx2, recipient, &msg, opts)
+			resp, err = sess.Client.SendMessage(ctx2, recipient, &msg, opts)
 			if err != nil {
 				return "", fmt.Errorf("failed to send media message after reconnection: %v", err)
 			}
@@ -361,8 +361,12 @@ func (s *Service) SendMedia(user, phoneNumber, mediaType, mediaData, mediaURL, c
 		}
 	}
 
+	actualChat := resp.Chat.String()
+	if actualChat == "" {
+		actualChat = recipient.String()
+	}
 	// Log successful message send
-	s.app.Logger.Printf("Media sent successfully to %s from user %s", recipient.String(), user)
+	s.app.Logger.Printf("Media sent successfully to %s (chat %s) from user %s", recipient.String(), actualChat, user)
 
 	// Post-send: set presence back to unavailable after a random delay
 	go func() {

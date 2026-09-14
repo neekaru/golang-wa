@@ -29,7 +29,7 @@ func (h *Handlers) SendMessageHandler(c *gin.Context) {
 		return
 	}
 
-	err := h.service.SendMessage(req.User, req.PhoneNumber, req.Message)
+	chatJID, err := h.service.SendMessage(req.User, req.PhoneNumber, req.Message)
 	if err != nil {
 		if dupErr, ok := isDuplicateMessageError(err); ok {
 			retrySeconds := int(dupErr.RetryAfter.Seconds())
@@ -56,7 +56,10 @@ func (h *Handlers) SendMessageHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"msg": "Message sent successfully"})
+	c.JSON(http.StatusOK, gin.H{
+		"msg":      "Message sent successfully",
+		"chat_jid": chatJID,
+	})
 }
 
 // MarkReadHandler handles marking messages as read
