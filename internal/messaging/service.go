@@ -275,7 +275,7 @@ func (s *Service) MarkRead(user string, messageIDs []string, fromJID, toJID stri
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	err := sess.Client.MarkRead(ctx, typedMessageIDs, time.Now(), toJIDObj, fromJIDObj, types.ReceiptTypeRead)
+	err = sess.Client.MarkRead(ctx, typedMessageIDs, time.Now(), toJIDObj, fromJIDObj, types.ReceiptTypeRead)
 	if err != nil {
 		return fmt.Errorf("failed to mark as read: %v", err)
 	}
