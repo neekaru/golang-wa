@@ -51,11 +51,11 @@ require (
 	github.com/mattn/go-colorable v0.1.15 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/mattn/go-sqlite3 v1.14.52
-	github.com/petermattis/goid v0.0.0-20260820044319-269ab09b5261 // indirect
+	github.com/petermattis/goid v0.0.0-20260918085751-abfca077860b // indirect
 	github.com/rs/zerolog v1.35.1
 	go.mau.fi/libsignal v0.2.2 // indirect
-	go.mau.fi/util v0.10.1-0.20260820140024-eb612d936fde // indirect
-	go.mau.fi/whatsmeow v0.0.0-20260909164725-b25a56d63729
+	go.mau.fi/util v0.10.1 // indirect
+	go.mau.fi/whatsmeow v0.0.0-20260917111002-2e338d0ee73d
 	golang.org/x/crypto v0.57.0 // indirect
 	golang.org/x/exp v0.0.0-20260908205506-85c1c2202aba // indirect
 	golang.org/x/net v0.59.0 // indirect
