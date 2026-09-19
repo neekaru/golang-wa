@@ -40,6 +40,7 @@ jobs:
       - name: Create or update pull request
         uses: peter-evans/create-pull-request@v7
         with:
+          token: ${{ secrets.GH_TOKEN }}
           base: ${{ matrix.base }}
           branch: deps/update-${{ matrix.base }}
           add-paths: |
