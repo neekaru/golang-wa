@@ -15,14 +15,14 @@ import (
 
 // PasskeyState represents the current state of a passkey pairing flow
 type PasskeyState struct {
-	Pending       bool            `json:"pending"`
-	PublicKeyJSON json.RawMessage `json:"public_key"`
+	Pending       bool                 `json:"pending"`
+	PublicKeyJSON json.RawMessage      `json:"public_key"`
 	WebAuthn      *LoginWebAuthnParams `json:"webauthn,omitempty"`
-	Code          string          `json:"code"`
-	SkipHandoffUX bool            `json:"skip_ux"`
-	Error         string          `json:"error"`
-	Done          bool            `json:"done"`
-	LoggedIn      bool            `json:"logged_in"`
+	Code          string               `json:"code"`
+	SkipHandoffUX bool                 `json:"skip_ux"`
+	Error         string               `json:"error"`
+	Done          bool                 `json:"done"`
+	LoggedIn      bool                 `json:"logged_in"`
 }
 
 // LoginWebAuthnParams mirrors mautrix/go bridgev2.LoginWebAuthnParams
@@ -165,9 +165,7 @@ func (c *Client) Reconnect() {
 
 // IsLoggedIn returns whether the client is logged in
 func (c *Client) IsLoggedIn() bool {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return c.Status == StatusLoggedIn
+	return c.WhatsmeowClient.IsLoggedIn()
 }
 
 // IsConnected returns whether the client is connected
