@@ -47,6 +47,7 @@ func (s *Server) SetupRoutes() {
 
 	// Register contact handlers
 	contactHandlers := contact.NewHandlers(s.app)
+	s.router.POST("/contact/check", contactHandlers.CheckWhatsAppNumberHandler)
 	s.router.POST("/contact", contactHandlers.GetAllContactsHandler)
 	s.router.POST("/contact/saved", contactHandlers.GetSavedContactsHandler)
 	s.router.POST("/contact/unsaved", contactHandlers.GetUnsavedContactsHandler)

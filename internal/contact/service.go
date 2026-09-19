@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"go.mau.fi/whatsmeow/types"
 
 	"github.com/neekaru/whatsappgo-bot/internal/app"
+	"github.com/neekaru/whatsappgo-bot/internal/utils"
 )
 
 func contactDisplayName(contactName, pushName, businessName string) string {
@@ -33,6 +35,33 @@ func NewService(app *app.App) *Service {
 	return &Service{
 		app: app,
 	}
+}
+
+// CheckWhatsAppNumber checks whether a phone number is registered on WhatsApp.
+func (s *Service) CheckWhatsAppNumber(user, phoneNumber string) (CheckNumberResponse, error) {
+	client, exists := s.app.GetClientManager().GetClient(user)
+	if !exists {
+		return CheckNumberResponse{}, fmt.Errorf("client not found for user %s", user)
+	} else if !client.IsLoggedIn() {
+		return CheckNumberResponse{}, fmt.Errorf("client is not logged in")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	result, err := utils.CheckWhatsAppNumber(ctx, client.WhatsmeowClient, phoneNumber)
+	if err != nil {
+		return CheckNumberResponse{}, err
+	}
+
+	response := CheckNumberResponse{
+		User:        user,
+		PhoneNumber: strings.TrimPrefix(strings.TrimSpace(phoneNumber), "+"),
+		Registered:  result.IsIn,
+	}
+	if result.IsIn && !result.JID.IsEmpty() {
+		response.JID = result.JID.String()
+	}
+	return response, nil
 }
 
 // GetAllContacts retrieves all contacts for a user

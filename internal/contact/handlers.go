@@ -21,6 +21,26 @@ func NewHandlers(app *app.App) *Handlers {
 	}
 }
 
+// CheckWhatsAppNumberHandler handles POST /contact/check.
+func (h *Handlers) CheckWhatsAppNumberHandler(c *gin.Context) {
+	var req CheckNumberRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request. Required: user and phone_number"})
+		return
+	}
+
+	result, err := h.service.CheckWhatsAppNumber(req.User, req.PhoneNumber)
+	if err != nil {
+		h.app.Logger.Printf("Check WhatsApp number error for user %s: %v", req.User, err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to check WhatsApp number",
+			"details": err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
+
 // GetAllContactsHandler handles GET /contact - returns all contacts
 func (h *Handlers) GetAllContactsHandler(c *gin.Context) {
 	var req UserRequest
