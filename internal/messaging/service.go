@@ -10,6 +10,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/neekaru/whatsappgo-bot/internal/app"
 	"github.com/neekaru/whatsappgo-bot/internal/session"
+	"github.com/neekaru/whatsappgo-bot/internal/utils"
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/proto/waE2E"
 	"go.mau.fi/whatsmeow/types"
@@ -170,10 +171,11 @@ func (s *Service) sendMessageWithRetry(user, phoneNumber, message string) (strin
 			}
 		}
 
-		// Create recipient JID
-		recipient := types.JID{
-			User:   phoneNumber,
-			Server: "s.whatsapp.net",
+		lookupCtx, lookupCancel := context.WithTimeout(context.Background(), 30*time.Second)
+		recipient, err := utils.ResolveRecipient(lookupCtx, sess.Client, phoneNumber)
+		lookupCancel()
+		if err != nil {
+			return "", err
 		}
 
 		// === ANTI-BAN: Simulate human typing behavior ===
