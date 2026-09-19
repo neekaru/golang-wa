@@ -43,10 +43,6 @@ func (s *Service) GetAllContacts(user string) ([]Contact, error) {
 		return nil, fmt.Errorf("client not found for user %s", user)
 	}
 
-	if !client.IsLoggedIn() {
-		return nil, fmt.Errorf("client is not logged in")
-	}
-
 	ctx := context.Background()
 	contacts, err := client.WhatsmeowClient.Store.Contacts.GetAllContacts(ctx)
 	if err != nil {
@@ -138,6 +134,6 @@ func (s *Service) RefreshContacts(user string) error {
 	// We can trigger a sync by requesting presence updates or by reconnecting
 	// For now, we'll return success as contacts are managed automatically
 	s.app.Logger.Printf("Contact refresh requested for user %s - contacts are automatically synced by whatsmeow", user)
-	
+
 	return nil
 }
