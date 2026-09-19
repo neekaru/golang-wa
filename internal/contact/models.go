@@ -5,6 +5,20 @@ type UserRequest struct {
 	User string `json:"user" binding:"required"`
 }
 
+// CheckNumberRequest represents a WhatsApp registration lookup.
+type CheckNumberRequest struct {
+	User        string `json:"user" binding:"required"`
+	PhoneNumber string `json:"phone_number" binding:"required"`
+}
+
+// CheckNumberResponse reports whether a phone number is registered on WhatsApp.
+type CheckNumberResponse struct {
+	User        string `json:"user"`
+	PhoneNumber string `json:"phone_number"`
+	Registered  bool   `json:"registered"`
+	JID         string `json:"jid,omitempty"`
+}
+
 // Contact represents a WhatsApp contact
 type Contact struct {
 	JID          string `json:"jid"`           // WhatsApp JID (e.g., "1234567890@s.whatsapp.net")
