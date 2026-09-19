@@ -123,9 +123,11 @@ func (s *Service) SendMedia(user, phoneNumber, mediaType, mediaData, mediaURL, c
 		}
 	}
 
-	recipient := types.JID{
-		User:   phoneNumber,
-		Server: "s.whatsapp.net",
+	lookupCtx, lookupCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	recipient, err := utils.ResolveRecipient(lookupCtx, sess.Client, phoneNumber)
+	lookupCancel()
+	if err != nil {
+		return "", err
 	}
 
 	var media []byte
