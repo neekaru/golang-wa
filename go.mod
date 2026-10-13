@@ -36,11 +36,11 @@ require (
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/u2takey/go-utils v0.3.1 // indirect
 	github.com/ugorji/go/codec v1.3.2 // indirect
-	github.com/vektah/gqlparser/v2 v2.5.60 // indirect
-	go.mongodb.org/mongo-driver/v2 v2.9.1 // indirect
-	golang.org/x/arch v0.31.0 // indirect
-	golang.org/x/sync v0.23.0 // indirect
-	golang.org/x/text v0.42.0 // indirect
+	github.com/vektah/gqlparser/v2 v2.5.62 // indirect
+	go.mongodb.org/mongo-driver/v2 v2.9.2 // indirect
+	golang.org/x/arch v0.32.0 // indirect
+	golang.org/x/sync v0.24.0 // indirect
+	golang.org/x/text v0.43.0 // indirect
 )
 
 require (
@@ -48,17 +48,17 @@ require (
 	github.com/gin-gonic/gin v1.12.0
 	github.com/golang/protobuf v1.5.4
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/mattn/go-colorable v0.1.15 // indirect
+	github.com/mattn/go-colorable v0.1.16 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/mattn/go-sqlite3 v1.14.52
 	github.com/petermattis/goid v0.0.0-20260918085751-abfca077860b // indirect
 	github.com/rs/zerolog v1.35.1
 	go.mau.fi/libsignal v0.2.2 // indirect
 	go.mau.fi/util v0.10.1 // indirect
-	go.mau.fi/whatsmeow v0.0.0-20260929112325-8b41cfe6d9c4
-	golang.org/x/crypto v0.57.0 // indirect
-	golang.org/x/exp v0.0.0-20260908205506-85c1c2202aba // indirect
-	golang.org/x/net v0.59.0 // indirect
-	golang.org/x/sys v0.48.0 // indirect
+	go.mau.fi/whatsmeow v0.0.0-20261007111105-c386243a72ba
+	golang.org/x/crypto v0.58.0 // indirect
+	golang.org/x/exp v0.0.0-20261009195045-ca0d7ba23607 // indirect
+	golang.org/x/net v0.61.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
 	google.golang.org/protobuf v1.36.12
 )
