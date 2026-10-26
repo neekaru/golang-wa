@@ -559,6 +559,43 @@ curl -X POST http://localhost:8080/contact/refresh \
 }
 ```
 
+## Group Management
+
+### List Joined Groups
+Retrieve the JID and name of every group the user's WhatsApp account has joined.
+The session must exist and be logged in. The WhatsApp request has a 30-second timeout.
+
+```bash
+curl -X POST http://localhost:8080/groups/list \
+  -H "Content-Type: application/json" \
+  -d '{"user":"test_user"}'
+```
+
+**Success Response (200):**
+```json
+{
+  "groups": [
+    {
+      "jid": "120363123456789012@g.us",
+      "name": "Tim Kerja"
+    }
+  ],
+  "total": 1,
+  "user": "test_user"
+}
+```
+
+If the account has no groups, `groups` is `[]` and `total` is `0`.
+Invalid JSON or a missing, empty, or whitespace-only `user` returns HTTP 400 with an `error` message.
+A missing session, a logged-out session, or a WhatsApp request failure returns HTTP 500:
+
+```json
+{
+  "error": "Failed to get groups",
+  "details": "client not found for user test_user"
+}
+```
+
 ## Important Notes
 
 1. Replace `test_user` with your actual user identifier
