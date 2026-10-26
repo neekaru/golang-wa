@@ -3,6 +3,7 @@ package server
 import (
 	"github.com/neekaru/whatsappgo-bot/internal/auth"
 	"github.com/neekaru/whatsappgo-bot/internal/contact"
+	"github.com/neekaru/whatsappgo-bot/internal/group"
 	"github.com/neekaru/whatsappgo-bot/internal/health"
 	"github.com/neekaru/whatsappgo-bot/internal/media"
 	"github.com/neekaru/whatsappgo-bot/internal/messaging"
@@ -44,6 +45,10 @@ func (s *Server) SetupRoutes() {
 	s.router.POST("/send/file", mediaHandlers.SendFileHandler)
 	s.router.POST("/send/image", mediaHandlers.SendImageHandler)
 	s.router.POST("/send/video", mediaHandlers.SendVideoHandler)
+
+	// Register group handlers
+	groupHandlers := group.NewHandlers(s.app)
+	s.router.POST("/groups/list", groupHandlers.ListGroupsHandler)
 
 	// Register contact handlers
 	contactHandlers := contact.NewHandlers(s.app)
