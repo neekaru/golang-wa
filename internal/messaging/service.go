@@ -91,7 +91,7 @@ func (s *Service) simulateTyping(client *whatsmeow.Client, recipient types.JID, 
 	time.Sleep(humanDelay(200, 500))
 }
 
-// SendMessage sends a text message to a WhatsApp contact
+// SendMessage sends a text message to a WhatsApp contact or group.
 func (s *Service) SendMessage(user, phoneNumber, message string) (string, error) {
 	const duplicateWindow = 15 * time.Second
 	const duplicateMax = 3
@@ -103,30 +103,9 @@ func (s *Service) SendMessage(user, phoneNumber, message string) (string, error)
 		s.app.Logger.Printf("Warning: phone number is empty for user %s", user)
 		return "", fmt.Errorf("phone number is empty, cannot send message")
 	}
-	// Check if phoneNumber is valid: all digits or starts with '+' followed by digits
-	valid := true
-	if phoneNumber[0] == '+' {
-		if len(phoneNumber) == 1 {
-			valid = false
-		} else {
-			for _, c := range phoneNumber[1:] {
-				if c < '0' || c > '9' {
-					valid = false
-					break
-				}
-			}
-		}
-	} else {
-		for _, c := range phoneNumber {
-			if c < '0' || c > '9' {
-				valid = false
-				break
-			}
-		}
-	}
-	if !valid {
-		s.app.Logger.Printf("Warning: phone number is invalid for user %s: %s", user, phoneNumber)
-		return "", fmt.Errorf("phone number is invalid, must be all digits or start with '+' followed by digits")
+	if _, err := utils.ParseRecipient(phoneNumber); err != nil {
+		s.app.Logger.Printf("Warning: invalid recipient for user %s: %s", user, phoneNumber)
+		return "", err
 	}
 
 	dupKey := fmt.Sprintf("num|%s|%s", user, phoneNumber)

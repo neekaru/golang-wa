@@ -66,14 +66,6 @@ func (h *Handlers) sendMediaHandler(c *gin.Context, mediaType string) {
 			})
 			return
 		}
-		// Special handling for invalid phone number format
-		if err.Error() == "phone number is invalid, must contain only digits" {
-			c.JSON(http.StatusOK, gin.H{
-				"error":   "Media cannot be send",
-				"details": err.Error(),
-			})
-			return
-		}
 
 		// Check if error is related to file/URL access
 		if err.Error() == "failed to download media from URL" ||

@@ -25,10 +25,36 @@ func CheckWhatsAppNumber(ctx context.Context, client *whatsmeow.Client, phoneNum
 	return users[0], nil
 }
 
-// ResolveRecipient returns the canonical WhatsApp JID for a phone number.
+// ParseRecipient accepts a phone number or a modern/legacy WhatsApp group JID.
+func ParseRecipient(recipient string) (types.JID, error) {
+	if strings.HasSuffix(recipient, "@"+types.GroupServer) {
+		user := strings.TrimSuffix(recipient, "@"+types.GroupServer)
+		first, second, legacy := strings.Cut(user, "-")
+		if isDigits(first) && (!legacy || isDigits(second)) {
+			return types.NewJID(user, types.GroupServer), nil
+		}
+	} else {
+		phone := strings.TrimPrefix(recipient, "+")
+		if isDigits(phone) {
+			return types.NewJID(phone, types.DefaultUserServer), nil
+		}
+	}
+	return types.EmptyJID, fmt.Errorf("recipient is invalid, must be a phone number or a group JID ending in @g.us")
+}
+
+func isDigits(value string) bool {
+	return value != "" && strings.IndexFunc(value, func(r rune) bool { return r < '0' || r > '9' }) < 0
+}
+
+// ResolveRecipient returns a group JID directly or resolves a phone number to its LID.
 func ResolveRecipient(ctx context.Context, client *whatsmeow.Client, phoneNumber string) (types.JID, error) {
-	phoneNumber = strings.TrimPrefix(phoneNumber, "+")
-	phoneJID := types.NewJID(phoneNumber, types.DefaultUserServer)
+	phoneJID, err := ParseRecipient(phoneNumber)
+	if err != nil {
+		return types.EmptyJID, err
+	}
+	if phoneJID.Server == types.GroupServer {
+		return phoneJID, nil
+	}
 
 	lid, err := client.Store.LIDs.GetLIDForPN(ctx, phoneJID)
 	if err != nil {
