@@ -222,8 +222,30 @@ curl -X POST "http://localhost:8080/wa/passkey/confirm?user=test_user"
 
 ## Messaging
 
+All four send endpoints (`/send`, `/send/image`, `/send/video`, `/send/file`) accept
+either a phone number (digits, optionally prefixed with `+`) or a complete group JID
+in the existing `phone_number` field. Group JIDs can be modern (`120363123456789012@g.us`)
+or legacy (`6281234567890-1234567890@g.us`); copy the full `jid` from `/groups/list`.
+Do not remove `@g.us`: a digits-only value is treated as a personal phone number.
+The logged-in account must belong to the group and be allowed to send messages
+(for example, an admin-only group requires an admin account).
+
+```bash
+curl -X POST http://localhost:8080/send \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user": "test_user",
+    "phone_number": "120363123456789012@g.us",
+    "message": "Hello, group!"
+  }'
+```
+
+For images, videos, and files, use the same group JID in `phone_number` with the
+media fields shown below. Phone-number recipients still use the existing LID lookup;
+group recipients bypass that lookup.
+
 ### 1. Send Text Message
-Send a text message to a WhatsApp number.
+Send a text message to a WhatsApp number or group.
 
 ```bash
 curl -X POST http://localhost:8080/send \
@@ -599,7 +621,7 @@ A missing session, a logged-out session, or a WhatsApp request failure returns H
 ## Important Notes
 
 1. Replace `test_user` with your actual user identifier
-2. Phone numbers should be in international format without any special characters (e.g., "1234567890")
+2. Personal phone numbers should use international format (digits, with an optional leading `+`); group recipients must use their full `@g.us` JID.
 3. For media uploads, you can use either:
    - Base64 encoded data with the `media` parameter
    - Direct URL to the media with the `url` parameter
